@@ -36,6 +36,7 @@ contract Game is Owned, IGame {
 
     struct Player {
         uint256 cards;
+        bool hasPlayed;
         uint64 lastDefendedAt;
     }
 
@@ -303,6 +304,11 @@ contract Game is Owned, IGame {
         Player storage player = playerOf[msg.sender];
         uint256 cards = player.cards;
         if (cards >= config.maxCards) revert MaxCardsStaked();
+        if (!player.hasPlayed) {
+            address nftMinter = INFT(nft).minter();
+            INFTMinter(nftMinter).increaseFreeMintingOf(msg.sender);
+            player.hasPlayed = true;
+        }
 
         _checkpointUser(msg.sender);
 
