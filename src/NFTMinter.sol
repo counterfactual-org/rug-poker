@@ -20,7 +20,6 @@ contract NFTMinter is Owned, INFTMinter {
     uint256 public initialDiscountUntil;
     uint8[2] public shares;
     uint8[] public winnerRatios;
-    uint256 public mintingUnavailableFrom;
     uint256 public claimLimit;
 
     mapping(bytes32 merkleRoot => bool) public isMerkleRoot;
@@ -39,7 +38,6 @@ contract NFTMinter is Owned, INFTMinter {
     event UpdateInitialDiscountUntil(uint256 initialDiscountUntil);
     event UpdateShares(uint8[2] shares);
     event UpdateWinnerRatios(uint8[] winnerRatios);
-    event UpdateMintingUnavailableFrom(uint256 mintingUnavailableFrom);
     event UpdateClaimLimit(uint256 claimLimit);
     event UpdateMerkleRoot(bytes32 indexed merkleRoot, bool isMerkleRoot);
     event Claim(bytes32 indexed merkleRoot, address indexed account, uint256 amount);
@@ -51,7 +49,6 @@ contract NFTMinter is Owned, INFTMinter {
     error InvalidShares();
     error InvalidRatios();
     error InsufficientValue();
-    error MintingNotAvailable();
     error InsufficientFreeMinting();
     error FreeMintingNotAvailable();
     error ClaimUnavailable();
@@ -67,7 +64,6 @@ contract NFTMinter is Owned, INFTMinter {
         uint256 _price,
         uint8[2] memory _shares,
         uint8[] memory _winnerRatios,
-        uint256 _mintingUnavailableFrom,
         uint256 _initialDiscountUntil,
         uint256 _claimLimit,
         address _owner
@@ -79,7 +75,6 @@ contract NFTMinter is Owned, INFTMinter {
         price = _price;
         shares = _shares;
         winnerRatios = _winnerRatios;
-        mintingUnavailableFrom = _mintingUnavailableFrom;
         initialDiscountUntil = _initialDiscountUntil;
         claimLimit = _claimLimit;
     }
@@ -139,12 +134,6 @@ contract NFTMinter is Owned, INFTMinter {
         emit UpdateWinnerRatios(_winnerRatios);
     }
 
-    function updateMintingUnavailableFrom(uint256 _mintingUnavailableFrom) external onlyOwner {
-        mintingUnavailableFrom = _mintingUnavailableFrom;
-
-        emit UpdateMintingUnavailableFrom(_mintingUnavailableFrom);
-    }
-
     function updateClaimLimit(uint256 _claimLimit) external onlyOwner {
         claimLimit = _claimLimit;
 
@@ -195,9 +184,6 @@ contract NFTMinter is Owned, INFTMinter {
             if (amount != 1) revert FreeMintingNotAvailable();
             freeMintingOf[msg.sender] = freeMinting - 1;
         }
-
-        uint256 tokenId = INFT(nft).nextTokenId() + amount + (freeMint ? 1 : 0);
-        if (tokenId > mintingUnavailableFrom) revert MintingNotAvailable();
 
         bool initialDiscount = block.timestamp < initialDiscountUntil;
         uint256 discounted =

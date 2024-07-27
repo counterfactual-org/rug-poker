@@ -17,7 +17,6 @@ contract DeployScript is BaseScript {
     uint256 private constant TOKENS_IN_BATCH = 1000;
     address private constant TREASURY = address(0); // TODO
     uint256 private constant PRICE = 0.009e18;
-    uint256 private constant MINTING_UP_TO = 3000;
     uint256 private constant CLAIM_LIMIT = 100;
     Game.Config CONFIG = Game.Config({
         maxCards: 30,
@@ -64,7 +63,6 @@ contract DeployScript is BaseScript {
                     PRICE,
                     [30, 50],
                     winnerRatios,
-                    MINTING_UP_TO,
                     initialDiscountUntil,
                     CLAIM_LIMIT,
                     owner

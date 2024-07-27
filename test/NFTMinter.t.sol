@@ -17,7 +17,6 @@ contract NFTMinterTest is Test {
     uint8 private constant WINNER_RATIO_BRONZE = 20;
     uint256 private constant TOKENS_IN_BATCH = 1000;
     uint256 private constant PRICE = 0.009e18;
-    uint256 private constant MINTING_UP_TO = 2000;
     uint256 private constant CLAIM_LIMIT = 500;
 
     address private owner = makeAddr("owner");
@@ -40,7 +39,6 @@ contract NFTMinterTest is Test {
     error InvalidShares();
     error InvalidRatios();
     error InsufficientValue();
-    error MintingNotAvailable();
     error InsufficientFreeMinting();
     error FreeMintingNotAvailable();
 
@@ -60,7 +58,6 @@ contract NFTMinterTest is Test {
             PRICE,
             [SHARES_TREASURY, SHARES_GAME],
             winnerRatios,
-            MINTING_UP_TO,
             vm.getBlockTimestamp() + 1 weeks,
             CLAIM_LIMIT,
             owner
@@ -100,16 +97,6 @@ contract NFTMinterTest is Test {
     function test_mint_revertInsufficientValue() public {
         vm.expectRevert(InsufficientValue.selector);
         minter.mint{ value: PRICE - 1 }(1);
-    }
-
-    function test_mint_revertMintingPaused() public {
-        uint256 price = PRICE * 70 / 100;
-        for (uint256 i; i < 20; ++i) {
-            _mint(i, i * 100, 100, 100 * price, alice);
-            randomizer.processPendingRequest(i, bytes32(0));
-        }
-        vm.expectRevert(MintingNotAvailable.selector);
-        minter.mint{ value: PRICE }(1);
     }
 
     function test_mint_revertInsufficientFreeMinting() public {
