@@ -168,7 +168,7 @@ contract NFTMinter is Owned, INFTMinter {
         hasClaimed[merkleRoot][msg.sender] = true;
         totalClaimed[merkleRoot] = _totalClaimed;
 
-        INFT(nft).draw{ value: msg.value }(amount, msg.sender);
+        INFT(nft).draw{ value: INFT(nft).estimateRandomizerFee() }(amount, msg.sender);
 
         emit Claim(merkleRoot, msg.sender, amount);
     }
@@ -198,7 +198,7 @@ contract NFTMinter is Owned, INFTMinter {
             entrants.push(msg.sender);
         }
 
-        INFT(nft).draw{ value: msg.value - totalPrice }(amount + (freeMint ? 1 : 0), msg.sender);
+        INFT(nft).draw{ value: INFT(nft).estimateRandomizerFee() }(amount + (freeMint ? 1 : 0), msg.sender);
 
         emit Mint(totalPrice, amount, msg.sender, freeMint);
     }

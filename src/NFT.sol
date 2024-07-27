@@ -81,6 +81,10 @@ contract NFT is ERC721, Owned, IRandomizerCallback, INFT {
         return string(ITokenURIRenderer(tokenURIRenderer).render(tokenId));
     }
 
+    function estimateRandomizerFee() public view returns (uint256) {
+        return IRandomizer(randomizer).estimateFee(randomizerGasLimit);
+    }
+
     function transferFrom(address from, address to, uint256 id) public override {
         if (from != address(this) && to != address(this)) revert Forbidden();
 
@@ -133,13 +137,14 @@ contract NFT is ERC721, Owned, IRandomizerCallback, INFT {
         if (amount == 0 || amount > MINTING_LIMIT) revert InvalidAmount();
         if (to == address(0)) revert InvalidAddress();
 
-        address _randomizer = randomizer;
-        uint256 fee = IRandomizer(_randomizer).estimateFee(randomizerGasLimit);
+        uint256 fee = estimateRandomizerFee();
         if (address(this).balance < fee) revert InsufficientFee();
 
-        uint256 tokenId = nextTokenId;
+        address _randomizer = randomizer;
         IRandomizer(_randomizer).clientDeposit{ value: fee }(address(this));
+
         uint256 randomizerId = IRandomizer(_randomizer).request(randomizerGasLimit);
+        uint256 tokenId = nextTokenId;
         pendingRandomizerRequests[randomizerId] = RandomizerRequest(tokenId, amount, to, msg.sender);
 
         nextTokenId = tokenId + amount;

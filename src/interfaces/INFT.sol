@@ -8,6 +8,8 @@ interface INFT {
 
     function dataOf(uint256 id) external view returns (bytes32);
 
+    function estimateRandomizerFee() external view returns (uint256);
+
     function updateData(uint256 id, bytes32 data) external;
 
     function draw(uint256 amount, address to) external payable;
