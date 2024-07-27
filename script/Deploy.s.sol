@@ -25,6 +25,7 @@ contract DeployScript is BaseScript {
         minDuration: 1 weeks,
         immunePeriod: 1 hours,
         attackPeriod: 24 hours,
+        bootyPercentages: [15, 30, 50],
         attackFees: [uint256(0), 0.01e18, 0.03e18]
     });
 

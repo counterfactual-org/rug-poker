@@ -25,6 +25,7 @@ contract Game is Owned, IGame {
         uint32 minDuration;
         uint32 immunePeriod;
         uint32 attackPeriod;
+        uint8[3] bootyPercentages;
         uint256[3] attackFees;
     }
 
@@ -44,7 +45,7 @@ contract Game is Owned, IGame {
         bool resolving;
         bool finalized;
         AttackResult result;
-        BootyTier bootyTier;
+        uint8 bootyPercentage;
         address attacker;
         address defender;
         uint64 startedAt;
@@ -55,12 +56,6 @@ contract Game is Owned, IGame {
         Success,
         Fail,
         Draw
-    }
-
-    enum BootyTier {
-        TenPercent,
-        ThirtyPercent,
-        FiftyPercent
     }
 
     uint8 public constant RANK_TWO = 0;
@@ -99,7 +94,6 @@ contract Game is Owned, IGame {
     uint256 public randomizerGasLimit;
     address public treasury;
     Config public config;
-    mapping(BootyTier => uint8) private _bootyPercentages;
 
     uint256 public reserve;
     uint256 public accRewardPerShare;
@@ -126,7 +120,8 @@ contract Game is Owned, IGame {
     error InvalidAddress();
     error InvalidNumber();
     error InvalidPeriod();
-    error InvalidPercentage();
+    error InvalidBootyPercentages();
+    error InvalidAttackFees();
     error NoClaimableReward();
     error Forbidden();
     error MaxCardsStaked();
@@ -189,11 +184,8 @@ contract Game is Owned, IGame {
         evaluator = _evaluator;
         treasury = _treasury;
         config = _config;
-        _bootyPercentages[BootyTier.TenPercent] = 10;
-        _bootyPercentages[BootyTier.ThirtyPercent] = 30;
-        _bootyPercentages[BootyTier.FiftyPercent] = 50;
 
-        attacks.push(Attack_(false, false, AttackResult.None, BootyTier.TenPercent, address(0), address(0), 0));
+        attacks.push(Attack_(false, false, AttackResult.None, 0, address(0), address(0), 0));
     }
 
     receive() external payable { }
@@ -281,14 +273,19 @@ contract Game is Owned, IGame {
         emit UpdateTreasury(_treasury);
     }
 
-    function updateConfig(Config memory _config) external onlyOwner {
-        if (_config.maxCards == 0) revert InvalidNumber();
-        if (_config.maxAttacks == 0) revert InvalidNumber();
-        if (_config.maxBootyCards == 0 || _config.maxBootyCards > HOLE_CARDS) revert InvalidNumber();
-        if (_config.minDuration < 1 days) revert InvalidPeriod();
-        if (_config.attackPeriod < 1 hours) revert InvalidPeriod();
+    function updateConfig(Config memory c) external onlyOwner {
+        if (c.maxCards == 0) revert InvalidNumber();
+        if (c.maxAttacks == 0) revert InvalidNumber();
+        if (c.maxBootyCards == 0 || c.maxBootyCards > HOLE_CARDS) revert InvalidNumber();
+        if (c.minDuration < 1 days) revert InvalidPeriod();
+        if (c.attackPeriod < 1 hours) revert InvalidPeriod();
+        if (
+            c.bootyPercentages[0] >= c.bootyPercentages[1] || c.bootyPercentages[1] >= c.bootyPercentages[2]
+                || c.bootyPercentages[2] > 50
+        ) revert InvalidBootyPercentages();
+        if (c.attackFees[0] >= c.attackFees[1] || c.attackFees[1] >= c.attackFees[2]) revert InvalidAttackFees();
 
-        config = _config;
+        config = c;
 
         emit UpdateConfig();
     }
@@ -372,19 +369,22 @@ contract Game is Owned, IGame {
         emit BurnCard(msg.sender, tokenId);
     }
 
-    function attack(address defender, BootyTier bootyTier, uint256[HOLE_CARDS] memory tokenIds) external {
+    function attack(address defender, uint8 bootyTier, uint256[HOLE_CARDS] memory tokenIds) external {
+        if (defender == address(0)) revert InvalidAddress();
+        if (bootyTier >= 3) revert InvalidNumber();
+        if (tokenIds.length == 0) revert NoCard();
+        if (tokenIds.length != HOLE_CARDS) revert InvalidNumberOfCards();
+
         if (playerOf[defender].cards == 0) revert NotPlayer();
         if (isImmune(defender)) revert Immune();
         if (incomingAttackIdOf[defender] > 0) revert AlreadyUnderAttack();
         if (_outgoingAttackIds[msg.sender].length >= config.maxAttacks) revert AttackingMax();
-        if (tokenIds.length == 0) revert NoCard();
-        if (tokenIds.length != HOLE_CARDS) revert InvalidNumberOfCards();
 
         checkpointUser(msg.sender);
         checkpointUser(defender);
 
         uint256 accAttacker = _accReward[msg.sender];
-        uint256 fee = config.attackFees[uint8(bootyTier)];
+        uint256 fee = config.attackFees[bootyTier];
         if (accAttacker < fee) revert InsufficientFee();
         _accReward[msg.sender] = accAttacker - fee;
 
@@ -404,7 +404,10 @@ contract Game is Owned, IGame {
         }
 
         uint256 id = attacks.length;
-        attacks.push(Attack_(false, false, AttackResult.None, bootyTier, msg.sender, defender, uint64(block.timestamp)));
+        uint8 bootyPercentage = config.bootyPercentages[bootyTier];
+        attacks.push(
+            Attack_(false, false, AttackResult.None, bootyPercentage, msg.sender, defender, uint64(block.timestamp))
+        );
         _attackingTokenIds[id] = tokenIds;
         incomingAttackIdOf[defender] = id;
         _outgoingAttackIds[msg.sender].push(id);
@@ -491,7 +494,7 @@ contract Game is Owned, IGame {
         } else {
             if (block.timestamp <= _attack.startedAt + config.attackPeriod) revert AttackOngoing();
 
-            _moveBooty(attacker, defender, _attack.bootyTier);
+            _moveBooty(attacker, defender, _attack.bootyPercentage);
 
             _finalizeAttack(attackId, _attack);
         }
@@ -515,7 +518,7 @@ contract Game is Owned, IGame {
         AttackResult result = _evaluateAttack(_attackingTokenIds[attackId], _defendingTokenIds[attackId], data);
 
         if (result == AttackResult.Success) {
-            _moveBooty(attacker, defender, _attack.bootyTier);
+            _moveBooty(attacker, defender, _attack.bootyPercentage);
         } else if (result == AttackResult.Fail) {
             uint256 sharesDelta;
             uint256 bootyCards = uint256(uint8(data[4])) % config.maxBootyCards + 1;
@@ -572,9 +575,9 @@ contract Game is Owned, IGame {
         emit EvaluateAttack(handAttack, evalAttack, handDefense, evalDefense, result);
     }
 
-    function _moveBooty(address attacker, address defender, BootyTier bootyTier) internal {
+    function _moveBooty(address attacker, address defender, uint8 bootyPercentage) internal {
         uint256 reward = _accReward[defender];
-        uint256 booty = reward * _bootyPercentages[bootyTier] / 100;
+        uint256 booty = reward * bootyPercentage / 100;
 
         _accReward[attacker] += booty;
         _accReward[defender] = reward - booty;
