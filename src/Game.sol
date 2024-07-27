@@ -228,6 +228,10 @@ contract Game is Owned, IGame {
         return uint8(data[FIELD_SUIT]) % 4;
     }
 
+    function cardShares(uint256 tokenId) public view returns (uint256) {
+        return cardRank(tokenId) + 2;
+    }
+
     function accRewardOf(address account) external view returns (uint256) {
         uint256 _accRewardPerShare = _getAccRewardPerShare(address(this).balance);
         return _accReward[account] + sharesOf[account] * _accRewardPerShare / 1e12 - rewardDebtOf[account];
@@ -318,7 +322,7 @@ contract Game is Owned, IGame {
         player.cards = cards + 1;
         player.lastDefendedAt = uint64(block.timestamp);
 
-        _incrementShares(msg.sender, cardRank(tokenId));
+        _incrementShares(msg.sender, cardShares(tokenId));
 
         emit AddCard(msg.sender, tokenId);
     }
@@ -338,7 +342,7 @@ contract Game is Owned, IGame {
         playerOf[card.owner].cards -= 1;
 
         uint256 acc = _accReward[card.owner];
-        uint256 shares = cardRank(tokenId);
+        uint256 shares = cardShares(tokenId);
         uint256 reward = acc * shares / sharesOf[card.owner];
 
         _accReward[card.owner] = acc - reward;
@@ -361,7 +365,7 @@ contract Game is Owned, IGame {
         delete cardOf[tokenId];
         playerOf[msg.sender].cards -= 1;
 
-        _decrementShares(msg.sender, cardRank(tokenId));
+        _decrementShares(msg.sender, cardShares(tokenId));
 
         INFT(nft).burn(tokenId);
 
@@ -520,7 +524,7 @@ contract Game is Owned, IGame {
                 uint256 _tokenId = _attackingTokenIds[attackId][index];
                 if (cardOf[_tokenId].owner != defender) {
                     cardOf[_tokenId].owner = defender;
-                    sharesDelta += cardRank(_tokenId);
+                    sharesDelta += cardShares(_tokenId);
                 }
             }
 
