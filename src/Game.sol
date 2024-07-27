@@ -87,6 +87,7 @@ contract Game is Owned, IGame {
     uint8 private constant FIELD_SUIT = 2;
 
     uint8 public constant MAX_DURABILITY = 8;
+    uint8 public constant MAX_AIRDROP_DURABILITY = 3;
     uint256 public constant HOLE_CARDS = 5;
     uint256 public constant COMMUNITY_CARDS = 2;
     uint256 public constant MIN_RANDOMIZER_GAS_LIMIT = 100_000;
@@ -198,7 +199,8 @@ contract Game is Owned, IGame {
 
     function cardDurability(uint256 tokenId) public view returns (uint8) {
         bytes32 data = INFT(nft).dataOf(tokenId);
-        return uint8(data[FIELD_DURABILITY]) % MAX_DURABILITY;
+        bool airdrop = INFT(nft).isAirdrop(tokenId);
+        return (uint8(data[FIELD_DURABILITY]) % (airdrop ? MAX_AIRDROP_DURABILITY : MAX_DURABILITY)) + 1;
     }
 
     function cardRank(uint256 tokenId) public view returns (uint8) {
@@ -216,7 +218,7 @@ contract Game is Owned, IGame {
         if (value < 228) return RANK_JACK;
         if (value < 239) return RANK_QUEEN;
         if (value < 249) return RANK_KING;
-        if (value < 255) return RANK_ACE;
+        if (INFT(nft).isAirdrop(tokenId) || value < 255) return RANK_ACE;
         return RANK_JOKER;
     }
 
