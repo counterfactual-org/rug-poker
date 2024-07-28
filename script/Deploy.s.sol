@@ -26,7 +26,7 @@ contract DeployScript is BaseScript {
         immunePeriod: 1 hours,
         attackPeriod: 24 hours,
         bootyPercentages: [15, 30, 50],
-        attackFees: [uint256(0), 0.01e18, 0.03e18]
+        attackFees: [uint256(0), 0.003e18, 0.01e18]
     });
 
     function _run(uint256, address owner) internal override {

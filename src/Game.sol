@@ -388,9 +388,6 @@ contract Game is Owned, IGame {
         if (accAttacker < fee) revert InsufficientFee();
         _accReward[msg.sender] = accAttacker - fee;
 
-        TransferLib.transferETH(treasury, fee * 3 / 10, address(0));
-        checkpoint();
-
         if (!hasAttacked[msg.sender][defender]) {
             address nftMinter = INFT(nft).minter();
             INFTMinter(nftMinter).increaseFreeMintingOf(msg.sender);
@@ -411,6 +408,8 @@ contract Game is Owned, IGame {
         _attackingTokenIds[id] = tokenIds;
         incomingAttackIdOf[defender] = id;
         _outgoingAttackIds[msg.sender].push(id);
+
+        TransferLib.transferETH(treasury, fee, address(0));
 
         emit Attack(id, msg.sender, defender, tokenIds);
     }
