@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import { BaseScript } from "./BaseScript.s.sol";
 
 import { AuctionHouse } from "src/AuctionHouse.sol";
-import { Game } from "src/Game.sol";
+// import { Game } from "src/Game.sol";
 import { NFT } from "src/NFT.sol";
 import { NFTMinter } from "src/NFTMinter.sol";
 import { SvgRendererV1 } from "src/SvgRendererV1.sol";
@@ -18,16 +18,16 @@ contract DeployScript is BaseScript {
     address private constant TREASURY = address(0); // TODO
     uint256 private constant PRICE = 0.009e18;
     uint256 private constant CLAIM_LIMIT = 100;
-    Game.Config CONFIG = Game.Config({
-        maxCards: 30,
-        maxAttacks: 5,
-        maxBootyCards: 3,
-        minDuration: 1 weeks,
-        immunePeriod: 1 hours,
-        attackPeriod: 24 hours,
-        bootyPercentages: [15, 30, 50],
-        attackFees: [uint256(0), 0.003e18, 0.01e18]
-    });
+    // Game.Config CONFIG = Game.Config({
+    //     maxCards: 30,
+    //     maxAttacks: 5,
+    //     maxBootyCards: 3,
+    //     minDuration: 1 weeks,
+    //     immunePeriod: 1 hours,
+    //     attackPeriod: 24 hours,
+    //     bootyPercentages: [15, 30, 50],
+    //     attackFees: [uint256(0), 0.003e18, 0.01e18]
+    // });
 
     function _run(uint256, address owner) internal override {
         _enforceChain(ARBITRUM);
@@ -40,13 +40,15 @@ contract DeployScript is BaseScript {
             _saveDeployment("NFT", address(nft));
         }
 
-        address game = _loadDeployment("Game");
-        if (game == address(0)) {
-            game = address(
-                new Game{ salt: 0 }(nft, RANDOMIZER, MIN_RANDOMIZER_GAS_LIMIT, EVALUTOR, TREASURY, CONFIG, owner)
-            );
-            _saveDeployment("Game", address(game));
-        }
+        address game;
+        // TODO
+        // address game = _loadDeployment("Game");
+        // if (game == address(0)) {
+        //     game = address(
+        //         new Game{ salt: 0 }(nft, RANDOMIZER, MIN_RANDOMIZER_GAS_LIMIT, EVALUTOR, TREASURY, CONFIG, owner)
+        //     );
+        //     _saveDeployment("Game", address(game));
+        // }
 
         address nftMinter = _loadDeployment("NFTMinter");
         if (nftMinter == address(0)) {

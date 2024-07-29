@@ -1,3 +1,4 @@
 src/=src/
 forge-std/=lib/forge-std/src/
 solmate/=lib/solmate/src/
+diamond/=lib/diamond-3-hardhat/contracts/
