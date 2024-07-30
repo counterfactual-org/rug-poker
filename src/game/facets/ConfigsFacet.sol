@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.24;
 
-import { App, Config } from "../App.sol";
-
-import { MIN_RANDOMIZER_GAS_LIMIT } from "../Constants.sol";
+import { Config, Configs } from "../models/Configs.sol";
 import { BaseFacet } from "./BaseFacet.sol";
 
 contract ConfigsFacet is BaseFacet {
+    event UpdateRandomizerGasLimit(uint256 gasLimit);
+    event UpdateEvaluator(address indexed evaluator);
+    event UpdateTreasury(address indexed treasury);
+    event UpdateConfig();
+
     function nft() external view returns (address) {
         return s.nft;
     }
@@ -28,22 +31,30 @@ contract ConfigsFacet is BaseFacet {
     }
 
     function config() external view returns (Config memory) {
-        return App.config();
+        return Configs.latest();
     }
 
     function updateRandomizerGasLimit(uint256 _randomizerGasLimit) external onlyOwner {
-        App.updateRandomizerGasLimit(_randomizerGasLimit);
+        Configs.updateRandomizerGasLimit(_randomizerGasLimit);
+
+        emit UpdateRandomizerGasLimit(_randomizerGasLimit);
     }
 
     function updateEvaluator(address _evaluator) external onlyOwner {
-        App.updateEvaluator(_evaluator);
+        Configs.updateEvaluator(_evaluator);
+
+        emit UpdateEvaluator(_evaluator);
     }
 
     function updateTreasury(address _treasury) external onlyOwner {
-        App.updateTreasury(_treasury);
+        Configs.updateTreasury(_treasury);
+
+        emit UpdateTreasury(_treasury);
     }
 
     function updateConfig(Config memory c) external {
-        App.updateConfig(c);
+        Configs.updateConfig(c);
+
+        emit UpdateConfig();
     }
 }

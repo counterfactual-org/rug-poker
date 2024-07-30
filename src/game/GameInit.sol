@@ -7,10 +7,10 @@ import { IERC165 } from "diamond/interfaces/IERC165.sol";
 import { IERC173 } from "diamond/interfaces/IERC173.sol";
 import { LibDiamond } from "diamond/libraries/LibDiamond.sol";
 
-import { App } from "./App.sol";
-import { AppStorage, Config } from "./AppStorage.sol";
+import { Config, GameStorage } from "./GameStorage.sol";
+import { Configs } from "./models/Configs.sol";
 
-contract AppInit {
+contract GameInit {
     function init(
         address nft,
         address randomizer,
@@ -25,12 +25,12 @@ contract AppInit {
         ds.supportedInterfaces[type(IDiamondLoupe).interfaceId] = true;
         ds.supportedInterfaces[type(IERC173).interfaceId] = true;
 
-        AppStorage storage s = App.appStorage();
+        GameStorage storage s = Configs.gameStorage();
         s.nft = nft;
         s.randomizer = randomizer;
-        App.updateEvaluator(evaluator);
-        App.updateRandomizerGasLimit(randomizerGasLimit);
-        App.updateTreasury(treasury);
-        App.updateConfig(c);
+        Configs.updateEvaluator(evaluator);
+        Configs.updateRandomizerGasLimit(randomizerGasLimit);
+        Configs.updateTreasury(treasury);
+        Configs.updateConfig(c);
     }
 }

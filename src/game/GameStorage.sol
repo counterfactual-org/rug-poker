@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.24;
 
-import "./Constants.sol";
+import { HOLE_CARDS } from "./Constants.sol";
 
-struct AppStorage {
+struct GameStorage {
     // configs
     address nft;
     address randomizer;
@@ -49,13 +49,17 @@ struct Config {
 }
 
 struct Player {
-    uint256 cards;
+    address account;
     bool hasPlayed;
     uint64 lastDefendedAt;
+    uint256 cards;
 }
 
 struct Card {
+    uint256 tokenId;
     uint8 durability;
+    uint8 rank;
+    uint8 suit;
     bool added;
     bool underuse;
     address owner;
@@ -63,6 +67,7 @@ struct Card {
 }
 
 struct Attack_ {
+    uint256 id;
     bool resolving;
     bool finalized;
     AttackResult result;

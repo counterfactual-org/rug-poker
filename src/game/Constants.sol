@@ -21,16 +21,5 @@ uint8 constant SUIT_HEART = 1;
 uint8 constant SUIT_DIAMOND = 2;
 uint8 constant SUIT_CLUB = 3;
 
-uint8 constant MAX_CARD_VALUE = 52;
-
-uint8 constant FIELD_DURABILITY = 0;
-uint8 constant FIELD_RANK = 1;
-uint8 constant FIELD_SUIT = 2;
-
-uint8 constant MAX_DURABILITY = 8;
-uint8 constant MIN_DURABILITY = 3;
-
 uint256 constant HOLE_CARDS = 5;
 uint256 constant COMMUNITY_CARDS = 2;
-
-uint256 constant MIN_RANDOMIZER_GAS_LIMIT = 100_000;

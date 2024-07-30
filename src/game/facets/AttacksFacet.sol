@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.24;
 
-import { App } from "../App.sol";
-import { AttackResult, Attack_ } from "../AppStorage.sol";
-import { HOLE_CARDS, MAX_CARD_VALUE, RANK_JOKER } from "../Constants.sol";
+import { HOLE_CARDS } from "../Constants.sol";
+import { Attack_, Attacks } from "../models/Attacks.sol";
+import { Card, Cards } from "../models/Cards.sol";
+import { Player, Players } from "../models/Players.sol";
 import { BaseFacet } from "./BaseFacet.sol";
 
 import { IERC721 } from "forge-std/interfaces/IERC721.sol";
@@ -12,23 +13,20 @@ import { INFTMinter } from "src/interfaces/INFTMinter.sol";
 import { TransferLib } from "src/libraries/TransferLib.sol";
 
 contract AttcksFacet is BaseFacet {
+    using Players for Player;
+    using Cards for Card;
+    using Attacks for Attack_;
+
     event Attack(uint256 indexed id, address indexed attacker, address indexed defender, uint256[HOLE_CARDS] tokenIds);
     event Defend(uint256 indexed attackId, uint256[] tokenIds, uint256[] jokerTokenIds);
 
-    error InvalidAddress();
-    error InvalidNumber();
+    error NotPlayer();
     error InvalidNumberOfCards();
     error InvalidNumberOfJokers();
     error InvalidJokerCard();
-    error NotPlayer();
-    error Immune();
-    error AlreadyUnderAttack();
-    error AttackingMax();
-    error InsufficientFee();
     error AttackResolving();
     error AttackFinalized();
     error AttackOver();
-    error Forbidden();
     error WornOut();
     error NotJoker();
     error AlreadyDefended();
@@ -54,53 +52,19 @@ contract AttcksFacet is BaseFacet {
         return s.outgoingAttackIds[account];
     }
 
-    function isImmune(address account) public view returns (bool) {
-        uint256 lastDefendedAt = s.playerOf[account].lastDefendedAt;
-        return lastDefendedAt > 0 && block.timestamp < lastDefendedAt + App.config().immunePeriod;
-    }
-
     function attack(address defender, uint8 bootyTier, uint256[HOLE_CARDS] memory tokenIds) external {
-        if (defender == address(0)) revert InvalidAddress();
-        if (bootyTier >= 3) revert InvalidNumber();
-        _assertNotDuplicate(tokenIds);
+        Player storage player = Players.get(msg.sender);
+        if (!player.initialized()) revert NotPlayer();
 
-        if (s.playerOf[defender].cards == 0) revert NotPlayer();
-        if (isImmune(defender)) revert Immune();
-        if (s.incomingAttackId[defender] > 0) revert AlreadyUnderAttack();
-        if (s.outgoingAttackIds[msg.sender].length >= App.config().maxAttacks) revert AttackingMax();
+        player.checkpoint();
+        Players.get(defender).checkpoint();
 
-        App.checkpointUser(msg.sender);
-        App.checkpointUser(defender);
-
-        uint256 accAttacker = s.accReward[msg.sender];
-        uint256 fee = App.config().attackFees[bootyTier];
-        if (accAttacker < fee) revert InsufficientFee();
-        s.accReward[msg.sender] = accAttacker - fee;
-
-        if (!s.hasAttacked[msg.sender][defender]) {
-            address nftMinter = INFT(s.nft).minter();
-            INFTMinter(nftMinter).increaseFreeMintingOf(msg.sender);
-            s.hasAttacked[msg.sender][defender] = true;
-        }
-
-        for (uint256 i; i < tokenIds.length; ++i) {
-            uint256 tokenId = tokenIds[i];
-            App.assertCardAvailable(tokenId, msg.sender);
-            s.cardOf[tokenId].underuse = true;
-        }
-
-        uint256 id = s.lastAttackId + 1;
-        uint8 bootyPercentage = App.config().bootyPercentages[bootyTier];
-        s.attacks[id] =
-            Attack_(false, false, AttackResult.None, bootyPercentage, msg.sender, defender, uint64(block.timestamp));
-        s.lastAttackId = id;
-        s.attackingTokenIds[id] = tokenIds;
-        s.incomingAttackId[defender] = id;
-        s.outgoingAttackIds[msg.sender].push(id);
-
+        uint256 fee = player.deductFee(bootyTier);
         TransferLib.transferETH(s.treasury, fee, address(0));
 
-        emit Attack(id, msg.sender, defender, tokenIds);
+        Attack_ storage _attack = Attacks.init(msg.sender, defender, bootyTier, tokenIds);
+
+        emit Attack(_attack.id, msg.sender, defender, tokenIds);
     }
 
     function defend(
@@ -109,49 +73,12 @@ contract AttcksFacet is BaseFacet {
         uint256[] memory jokerTokenIds,
         uint8[] memory jokerCards
     ) external {
-        Attack_ storage _attack = s.attacks[attackId];
-        address defender = _attack.defender;
-        if (msg.sender != defender) revert Forbidden();
-        if (_attack.resolving) revert AttackResolving();
-        if (_attack.finalized) revert AttackFinalized();
-        if (_attack.startedAt + App.config().attackPeriod < block.timestamp) revert AttackOver();
-        if (s.defendingTokenIds[attackId].length > 0) revert AlreadyDefended();
+        Attack_ storage _attack = Attacks.get(attackId);
+        _attack.defend(tokenIds, jokerTokenIds, jokerCards, msg.sender);
 
-        uint256 jokersLength = jokerTokenIds.length;
-        if ((tokenIds.length + jokersLength) != HOLE_CARDS) revert InvalidNumberOfCards();
-        if (jokersLength > App.config().maxJokers || jokersLength != jokerCards.length) revert InvalidNumberOfJokers();
-
-        for (uint256 i; i < jokersLength; ++i) {
-            if (App.cardRank(jokerTokenIds[i]) != RANK_JOKER) revert NotJoker();
-            if (jokerCards[i] >= MAX_CARD_VALUE) revert InvalidJokerCard();
-        }
-
-        uint256[HOLE_CARDS] memory ids;
-        for (uint256 i; i < HOLE_CARDS; ++i) {
-            ids[i] = i < jokersLength ? jokerTokenIds[i] : tokenIds[i - jokersLength];
-        }
-        _assertNotDuplicate(ids);
-
-        for (uint256 i; i < ids.length; ++i) {
-            uint256 tokenId = ids[i];
-            App.assertCardAvailable(tokenId, msg.sender);
-            s.cardOf[tokenId].underuse = true;
-        }
-
-        s.defendingTokenIds[attackId] = ids;
-        s.defendingJokerCards[attackId] = jokerCards;
-
-        App.checkpointUser(_attack.attacker);
-        App.checkpointUser(defender);
+        Players.get(_attack.attacker).checkpoint();
+        Players.get(_attack.defender).checkpoint();
 
         emit Defend(attackId, tokenIds, jokerTokenIds);
-    }
-
-    function _assertNotDuplicate(uint256[HOLE_CARDS] memory tokenIds) internal pure {
-        for (uint256 i; i < HOLE_CARDS - 1; ++i) {
-            for (uint256 j = i + 1; j < HOLE_CARDS; ++j) {
-                if (tokenIds[i] == tokenIds[j]) revert DuplicateTokenIds();
-            }
-        }
     }
 }

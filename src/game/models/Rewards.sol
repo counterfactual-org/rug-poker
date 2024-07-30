@@ -1,0 +1,83 @@
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity ^0.8.24;
+
+import { GameStorage } from "../GameStorage.sol";
+
+library Rewards {
+    event AdjustShares(address indexed account, uint256 sharesSum, uint256 shares);
+    event Checkpoint(uint256 accRewardPerShare, uint256 reserve);
+
+    function gameStorage() internal pure returns (GameStorage storage s) {
+        assembly {
+            s.slot := 0
+        }
+    }
+
+    function getAccRewardPerShare(uint256 balance) internal view returns (uint256 accRewardPerShare) {
+        GameStorage storage s = gameStorage();
+
+        accRewardPerShare = s.accRewardPerShare;
+        if (balance > s.reserve) {
+            uint256 shares = s.sharesSum;
+            if (shares > 0) {
+                uint256 newReward = balance - s.reserve;
+                accRewardPerShare += newReward * 1e12 / shares;
+            }
+        }
+    }
+
+    function incrementShares(address account, uint256 shares) internal {
+        GameStorage storage s = gameStorage();
+
+        uint256 sharesSum = s.sharesSum + shares;
+        uint256 _shares = s.sharesOf[account] + shares;
+        s.sharesSum = sharesSum;
+        s.sharesOf[account] = _shares;
+        s.rewardDebt[account] = _shares * s.accRewardPerShare / 1e12;
+
+        emit AdjustShares(account, sharesSum, _shares);
+    }
+
+    function decrementShares(address account, uint256 shares) internal {
+        GameStorage storage s = gameStorage();
+
+        uint256 sharesSum = s.sharesSum - shares;
+        uint256 _shares = s.sharesOf[account] - shares;
+        s.sharesSum = sharesSum;
+        s.sharesOf[account] = _shares;
+        s.rewardDebt[account] = _shares * s.accRewardPerShare / 1e12;
+
+        emit AdjustShares(account, sharesSum, _shares);
+    }
+
+    function moveBooty(address attacker, address defender, uint8 bootyPercentage) internal {
+        GameStorage storage s = gameStorage();
+
+        uint256 reward = s.accReward[defender];
+        uint256 booty = reward * bootyPercentage / 100;
+
+        s.accReward[attacker] += booty;
+        s.accReward[defender] = reward - booty;
+    }
+
+    function claim(address owner, uint256 shares) internal {
+        GameStorage storage s = gameStorage();
+
+        uint256 acc = s.accReward[owner];
+        uint256 reward = acc * shares / s.sharesOf[owner];
+
+        s.accReward[owner] = acc - reward;
+        s.claimableRewardOf[owner] += reward;
+    }
+
+    function checkpoint() internal {
+        GameStorage storage s = gameStorage();
+
+        uint256 _reserve = address(this).balance;
+        uint256 _accRewardPerShare = Rewards.getAccRewardPerShare(_reserve);
+        s.accRewardPerShare = _accRewardPerShare;
+        s.reserve = _reserve;
+
+        emit Checkpoint(_accRewardPerShare, _reserve);
+    }
+}

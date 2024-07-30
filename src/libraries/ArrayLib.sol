@@ -12,4 +12,13 @@ library ArrayLib {
             }
         }
     }
+
+    function hasDuplicate(uint256[5] memory array) internal pure returns (bool) {
+        for (uint256 i; i < 5 - 1; ++i) {
+            for (uint256 j = i + 1; j < 5; ++j) {
+                if (array[i] == array[j]) return true;
+            }
+        }
+        return false;
+    }
 }
