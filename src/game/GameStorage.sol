@@ -41,6 +41,8 @@ struct Config {
     uint8 maxJokers;
     uint8 maxAttacks;
     uint8 maxBootyCards;
+    uint8 minDurability;
+    uint8 maxDurability;
     uint32 minDuration;
     uint32 immunePeriod;
     uint32 attackPeriod;
@@ -57,12 +59,11 @@ struct Player {
 
 struct Card {
     uint256 tokenId;
+    address owner;
     uint8 durability;
     uint8 rank;
     uint8 suit;
-    bool added;
     bool underuse;
-    address owner;
     uint64 lastAddedAt;
 }
 

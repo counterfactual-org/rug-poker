@@ -15,6 +15,11 @@ contract CardsFacet is BaseFacet {
     event BurnCard(address indexed account, uint256 indexed tokenId);
 
     error NotPlayer();
+    error MaxCardsStaked();
+    error Forbidden();
+    error Underuse();
+    error DurationNotElapsed();
+    error WornOut();
 
     function getPlayer(address account) external view returns (Player memory) {
         return Players.get(account);
@@ -45,7 +50,21 @@ contract CardsFacet is BaseFacet {
 
     function addCard(uint256 tokenId) external {
         Player storage player = Players.init(msg.sender);
-        player.addCard(tokenId);
+        if (player.cards >= Configs.latest().maxCards) revert MaxCardsStaked();
+
+        player.increaseFreeMintingIfHasNotPlayed();
+
+        Card storage card = Cards.get(tokenId);
+        if (!card.initialized()) {
+            card = Cards.init(tokenId, msg.sender);
+        }
+
+        player.checkpoint();
+
+        Configs.erc721().transferFrom(msg.sender, address(this), tokenId);
+
+        player.incrementCards();
+        player.updateLastDefendedAt();
 
         emit AddCard(msg.sender, tokenId);
     }
@@ -54,7 +73,16 @@ contract CardsFacet is BaseFacet {
         Player storage player = Players.get(msg.sender);
         if (!player.initialized()) revert NotPlayer();
 
-        player.removeCard(tokenId);
+        Card storage card = Cards.get(tokenId);
+        if (card.owner != msg.sender) revert Forbidden();
+        if (card.underuse) revert Underuse();
+        if (!card.wornOut() && card.durationElapsed()) revert DurationNotElapsed();
+
+        player.checkpoint();
+        card.remove();
+        player.decrementCards();
+
+        Configs.erc721().transferFrom(address(this), msg.sender, tokenId);
 
         emit RemoveCard(msg.sender, tokenId);
     }
@@ -63,7 +91,16 @@ contract CardsFacet is BaseFacet {
         Player storage player = Players.get(msg.sender);
         if (!player.initialized()) revert NotPlayer();
 
-        player.burnCard(tokenId);
+        Card storage card = Cards.get(tokenId);
+        if (card.owner != msg.sender) revert Forbidden();
+        if (card.underuse) revert Underuse();
+        if (card.durability == 0) revert WornOut();
+
+        player.checkpoint();
+        card.remove();
+        player.decrementCards();
+
+        Configs.nft().burn(tokenId);
 
         emit BurnCard(msg.sender, tokenId);
     }

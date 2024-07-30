@@ -13,11 +13,6 @@ library Players {
 
     event CheckpointPlayer(address indexed account);
 
-    error MaxCardsStaked();
-    error Forbidden();
-    error Underuse();
-    error WornOut();
-    error DurationNotElapsed();
     error InsufficientFee();
 
     function gameStorage() internal pure returns (GameStorage storage s) {
@@ -48,48 +43,6 @@ library Players {
         self.lastDefendedAt = uint64(block.timestamp);
     }
 
-    function addCard(Player storage self, uint256 tokenId) internal {
-        address account = self.account;
-        uint256 cards = self.cards;
-        if (cards >= Configs.latest().maxCards) revert MaxCardsStaked();
-        increaseFreeMintingIfHasNotPlayed(self);
-
-        checkpoint(self);
-
-        Card storage card = Cards.get(tokenId);
-        if (!card.initialized()) {
-            card = Cards.init(tokenId, account);
-        }
-        card.add();
-
-        self.cards = cards + 1;
-        updateLastDefendedAt(self);
-    }
-
-    function removeCard(Player storage self, uint256 tokenId) internal {
-        Card storage card = Cards.get(tokenId);
-        if (card.owner != self.account) revert Forbidden();
-        if (card.underuse) revert Underuse();
-        if (!card.wornOut() && card.durationElapsed()) revert DurationNotElapsed();
-
-        checkpoint(self);
-
-        card.remove(false);
-        self.cards -= 1;
-    }
-
-    function burnCard(Player storage self, uint256 tokenId) internal {
-        Card storage card = Cards.get(tokenId);
-        if (card.owner != self.account) revert Forbidden();
-        if (card.underuse) revert Underuse();
-        if (card.durability == 0) revert WornOut();
-
-        checkpoint(self);
-
-        card.remove(true);
-        self.cards -= 1;
-    }
-
     function deductFee(Player storage self, uint8 bootyTier) internal returns (uint256 fee) {
         GameStorage storage s = gameStorage();
         uint256 acc = s.accReward[self.account];
@@ -113,6 +66,14 @@ library Players {
             INFTMinter(nftMinter).increaseFreeMintingOf(self.account);
             s.hasAttacked[self.account][defender] = true;
         }
+    }
+
+    function incrementCards(Player storage self) internal {
+        self.cards += 1;
+    }
+
+    function decrementCards(Player storage self) internal {
+        self.cards -= 1;
     }
 
     function checkpoint(Player storage self) internal {

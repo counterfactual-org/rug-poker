@@ -74,7 +74,7 @@ library Rewards {
         GameStorage storage s = gameStorage();
 
         uint256 _reserve = address(this).balance;
-        uint256 _accRewardPerShare = Rewards.getAccRewardPerShare(_reserve);
+        uint256 _accRewardPerShare = getAccRewardPerShare(_reserve);
         s.accRewardPerShare = _accRewardPerShare;
         s.reserve = _reserve;
 

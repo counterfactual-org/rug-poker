@@ -6,7 +6,6 @@ import { AttackResult, Attack_, GameStorage } from "../GameStorage.sol";
 import { Card, Cards } from "./Cards.sol";
 import { Config, Configs } from "./Configs.sol";
 import { Player, Players } from "./Players.sol";
-import { Randomizers } from "./Randomizers.sol";
 import { Rewards } from "./Rewards.sol";
 
 import { IEvaluator } from "src/interfaces/IEvaluator.sol";
@@ -20,8 +19,6 @@ library Attacks {
 
     uint8 constant MAX_CARD_VALUE = 52;
 
-    event FinalizeAttack(uint256 indexed id);
-    event ResolveAttack(uint256 indexed attackId, uint256 indexed randomizerId);
     event EvaluateAttack(
         IEvaluator.HandRank indexed rankAttack,
         uint256 evalAttack,
@@ -38,6 +35,7 @@ library Attacks {
     error Immune();
     error AlreadyUnderAttack();
     error AttackingMax();
+    error JokerNotAllowed();
     error AttackOver();
     error AlreadyDefended();
     error InvalidNumberOfCards();
@@ -46,7 +44,6 @@ library Attacks {
     error InvalidJokerCard();
     error AttackResolving();
     error AttackFinalized();
-    error AttackOngoing();
 
     function gameStorage() internal pure returns (GameStorage storage s) {
         assembly {
@@ -63,41 +60,45 @@ library Attacks {
         returns (Attack_ storage self)
     {
         GameStorage storage s = gameStorage();
-        Config memory c = Configs.latest();
 
         if (defender == address(0)) revert InvalidAddress();
         if (bootyTier >= 3) revert InvalidNumber();
         if (ArrayLib.hasDuplicate(tokenIds)) revert DuplicateTokenIds();
 
+        for (uint256 i; i < tokenIds.length; ++i) {
+            Card storage card = Cards.get(tokenIds[i]);
+            if (card.isJoker()) revert JokerNotAllowed();
+            card.assertAvailable(attacker);
+            card.markUnderuse();
+        }
+
+        uint256 id = s.lastAttackId + 1;
+        uint8 booty = Configs.latest().bootyPercentages[bootyTier];
+        s.attacks[id] = Attack_(id, false, false, AttackResult.None, booty, attacker, defender, uint64(block.timestamp));
+        s.lastAttackId = id;
+
+        s.attackingTokenIds[id] = tokenIds;
+
+        return s.attacks[id];
+    }
+
+    function markResolving(Attack_ storage self) internal {
+        self.resolving = true;
+    }
+
+    function start(Attack_ storage self) internal {
+        GameStorage storage s = gameStorage();
+
+        (uint256 id, address attacker, address defender) = (self.id, self.attacker, self.defender);
+
         Player storage d = Players.get(defender);
         if (!d.initialized()) revert NotPlayer();
         if (d.isImmune()) revert Immune();
         if (s.incomingAttackId[defender] > 0) revert AlreadyUnderAttack();
-        if (s.outgoingAttackIds[attacker].length >= c.maxAttacks) revert AttackingMax();
+        if (s.outgoingAttackIds[attacker].length >= Configs.latest().maxAttacks) revert AttackingMax();
 
-        for (uint256 i; i < tokenIds.length; ++i) {
-            Card storage card = Cards.get(tokenIds[i]);
-            card.assertAvailable(attacker);
-            card.underuse = true;
-        }
-
-        uint256 id = s.lastAttackId + 1;
-        s.attacks[id] = Attack_(
-            id,
-            false,
-            false,
-            AttackResult.None,
-            c.bootyPercentages[bootyTier],
-            attacker,
-            defender,
-            uint64(block.timestamp)
-        );
-        s.lastAttackId = id;
-        s.attackingTokenIds[id] = tokenIds;
         s.incomingAttackId[defender] = id;
         s.outgoingAttackIds[attacker].push(id);
-
-        return s.attacks[id];
     }
 
     function defend(
@@ -121,49 +122,33 @@ library Attacks {
         if ((tokenIds.length + jokersLength) != HOLE_CARDS) revert InvalidNumberOfCards();
         if (jokersLength > c.maxJokers || jokersLength != jokerCards.length) revert InvalidNumberOfJokers();
 
-        for (uint256 i; i < jokersLength; ++i) {
-            if (!Cards.get(jokerTokenIds[i]).isJoker()) revert NotJoker();
-            if (jokerCards[i] >= MAX_CARD_VALUE) revert InvalidJokerCard();
-        }
-
-        uint256[HOLE_CARDS] memory ids;
-        for (uint256 i; i < HOLE_CARDS; ++i) {
-            ids[i] = i < jokersLength ? jokerTokenIds[i] : tokenIds[i - jokersLength];
-        }
-        if (ArrayLib.hasDuplicate(ids)) revert DuplicateTokenIds();
-
-        for (uint256 i; i < ids.length; ++i) {
-            Card storage card = Cards.get(tokenIds[i]);
-            card.assertAvailable(attacker);
-            card.underuse = true;
-        }
-
-        s.defendingTokenIds[attackId] = ids;
+        s.defendingTokenIds[attackId] = _populateDefendingTokenIds(tokenIds, jokerTokenIds, jokerCards, attacker);
         s.defendingJokerCards[attackId] = jokerCards;
     }
 
-    function resolve(Attack_ storage self) internal {
-        if (self.resolving) revert AttackResolving();
-        if (self.finalized) revert AttackFinalized();
+    function _populateDefendingTokenIds(
+        uint256[] memory tokenIds,
+        uint256[] memory jokerTokenIds,
+        uint8[] memory jokerCards,
+        address attacker
+    ) private returns (uint256[HOLE_CARDS] memory ids) {
+        uint256 jokersLength = jokerTokenIds.length;
+        for (uint256 i; i < HOLE_CARDS; ++i) {
+            if (i < jokersLength) {
+                if (jokerCards[i] >= MAX_CARD_VALUE) revert InvalidJokerCard();
+                ids[i] = jokerTokenIds[i];
+                if (!Cards.get(ids[i]).isJoker()) revert NotJoker();
+            } else {
+                ids[i] = tokenIds[i - jokersLength];
+                if (Cards.get(ids[i]).isJoker()) revert JokerNotAllowed();
+            }
+            ids[i] = i < jokersLength ? jokerTokenIds[i] : tokenIds[i - jokersLength];
 
-        (address attacker, address defender) = (self.attacker, self.defender);
-        Players.get(attacker).checkpoint();
-        Players.get(defender).checkpoint();
-
-        uint256 attackId = self.id;
-        if (gameStorage().defendingTokenIds[attackId].length > 0) {
-            self.resolving = true;
-
-            uint256 randomizerId = Randomizers.request(address(this), attackId);
-
-            emit ResolveAttack(attackId, randomizerId);
-        } else {
-            if (block.timestamp <= self.startedAt + Configs.latest().attackPeriod) revert AttackOngoing();
-
-            Rewards.moveBooty(attacker, defender, self.bootyPercentage);
-
-            finalize(self);
+            Card storage card = Cards.get(ids[i]);
+            card.assertAvailable(attacker);
+            card.markUnderuse();
         }
+        if (ArrayLib.hasDuplicate(ids)) revert DuplicateTokenIds();
     }
 
     function finalize(Attack_ storage self) internal {
@@ -171,10 +156,9 @@ library Attacks {
 
         GameStorage storage s = gameStorage();
 
-        (address attacker, address defender) = (self.attacker, self.defender);
+        (uint256 id, address attacker, address defender) = (self.id, self.attacker, self.defender);
         Players.get(defender).updateLastDefendedAt();
 
-        uint256 id = self.id;
         for (uint256 i; i < s.attackingTokenIds[id].length; ++i) {
             s.cardOf[s.attackingTokenIds[id][i]].spend();
         }
@@ -190,31 +174,25 @@ library Attacks {
         delete s.defendingJokerCards[id];
         s.outgoingAttackIds[attacker].remove(id);
         s.incomingAttackId[defender] = 0;
-
-        emit FinalizeAttack(id);
     }
 
-    function onFinalize(Attack_ storage self, bytes32 value) internal {
+    function deriveAttackResult(Attack_ storage self, bytes32 seed) internal {
         GameStorage storage s = gameStorage();
 
-        (address attacker, address defender) = (self.attacker, self.defender);
-        Players.get(attacker).checkpoint();
-        Players.get(defender).checkpoint();
-
-        bytes32 data = keccak256(abi.encodePacked(value, block.number, block.timestamp));
-        uint256 attackId = self.id;
-        AttackResult result = _evaluateAttack(
-            s.attackingTokenIds[attackId], s.defendingTokenIds[attackId], s.defendingJokerCards[attackId], data
-        );
+        bytes32 random = keccak256(abi.encodePacked(seed, block.number, block.timestamp));
+        uint256 id = self.id;
+        AttackResult result =
+            _evaluate(s.attackingTokenIds[id], s.defendingTokenIds[id], s.defendingJokerCards[id], random);
 
         if (result == AttackResult.Success) {
-            Rewards.moveBooty(attacker, defender, self.bootyPercentage);
+            Rewards.moveBooty(self.attacker, self.defender, self.bootyPercentage);
         } else if (result == AttackResult.Fail) {
+            (address attacker, address defender) = (self.attacker, self.defender);
             uint256 sharesDelta;
-            uint256 bootyCards = uint256(uint8(data[4])) % Configs.latest().maxBootyCards + 1;
+            uint256 bootyCards = uint256(uint8(random[4])) % Configs.latest().maxBootyCards + 1;
             for (uint256 i; i < bootyCards; ++i) {
-                uint256 index = uint256(uint8(data[(5 + i) % 32])) % s.attackingTokenIds[attackId].length;
-                uint256 tokenId = s.attackingTokenIds[attackId][index];
+                uint256 index = uint256(uint8(random[(5 + i) % 32])) % s.attackingTokenIds[id].length;
+                uint256 tokenId = s.attackingTokenIds[id][index];
                 Card storage card = Cards.get(tokenId);
                 if (card.owner != defender) {
                     card.owner = defender;
@@ -226,15 +204,13 @@ library Attacks {
             Rewards.incrementShares(defender, sharesDelta);
         }
         self.result = result;
-
-        finalize(self);
     }
 
-    function _evaluateAttack(
+    function _evaluate(
         uint256[HOLE_CARDS] memory attackingTokenIds,
         uint256[HOLE_CARDS] memory defendingTokenIds,
         uint8[] memory defendingJokerCards,
-        bytes32 data
+        bytes32 random
     ) internal returns (AttackResult result) {
         uint256[] memory attackingCards = new uint256[](HOLE_CARDS + COMMUNITY_CARDS);
         uint256[] memory defendingCards = new uint256[](HOLE_CARDS + COMMUNITY_CARDS);
@@ -252,7 +228,7 @@ library Attacks {
             defendingCards[i] = rankD * 4 + suitD;
         }
         for (uint256 i; i < COMMUNITY_CARDS; ++i) {
-            uint8 card = uint8(data[i]) % MAX_CARD_VALUE;
+            uint8 card = uint8(random[i]) % MAX_CARD_VALUE;
             attackingCards[HOLE_CARDS + i] = card;
             defendingCards[HOLE_CARDS + i] = card;
         }
@@ -260,12 +236,12 @@ library Attacks {
         (IEvaluator.HandRank handAttack, uint256 evalAttack) = Configs.evaluator().handRank(attackingCards);
         (IEvaluator.HandRank handDefense, uint256 evalDefense) = Configs.evaluator().handRank(defendingCards);
 
-        if (evalAttack == evalDefense) {
-            result = AttackResult.Draw;
-        } else if (evalAttack < evalDefense) {
+        if (evalAttack < evalDefense) {
             result = AttackResult.Success;
         } else if (evalAttack > evalDefense) {
             result = AttackResult.Fail;
+        } else {
+            result = AttackResult.Draw;
         }
 
         emit EvaluateAttack(handAttack, evalAttack, handDefense, evalDefense, result);
