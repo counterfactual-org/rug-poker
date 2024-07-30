@@ -56,7 +56,7 @@ contract DeployScript is BaseScript {
             winnerRatios[0] = 50;
             winnerRatios[1] = 30;
             winnerRatios[2] = 20;
-            uint256 initialDiscountUntil = (block.timestamp + 2 weeks) * 1 days / 1 days;
+            uint256 initialBonusUntil = (block.timestamp + 2 weeks) * 1 days / 1 days;
             nftMinter = address(
                 new NFTMinter{ salt: 0 }(
                     nft,
@@ -66,7 +66,7 @@ contract DeployScript is BaseScript {
                     PRICE,
                     [30, 50],
                     winnerRatios,
-                    initialDiscountUntil,
+                    initialBonusUntil,
                     CLAIM_LIMIT,
                     owner
                 )

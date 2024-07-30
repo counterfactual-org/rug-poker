@@ -17,7 +17,7 @@ contract NFTMinter is Owned, INFTMinter {
     address public treasury;
     address public game;
     uint256 public price;
-    uint256 public initialDiscountUntil;
+    uint256 public initialBonusUntil;
     uint8[2] public shares;
     uint8[] public winnerRatios;
     uint256 public claimLimit;
@@ -36,14 +36,14 @@ contract NFTMinter is Owned, INFTMinter {
     event UpdateTreasury(address indexed treasury);
     event UpdateGame(address indexed game);
     event UpdatePrice(uint256 price);
-    event UpdateInitialDiscountUntil(uint256 initialDiscountUntil);
+    event UpdateInitialBonusUntil(uint256 initialBonusUntil);
     event UpdateShares(uint8[2] shares);
     event UpdateWinnerRatios(uint8[] winnerRatios);
     event UpdateClaimLimit(uint256 claimLimit);
     event UpdateMerkleRoot(bytes32 indexed merkleRoot, bool isMerkleRoot);
     event Claim(bytes32 indexed merkleRoot, address indexed account, uint256 amount);
     event IncreaseFreeMintingOf(address indexed account, uint256 count);
-    event Mint(uint256 price, uint256 amount, address indexed to, bool freeMint);
+    event Mint(uint256 price, uint256 amount, uint256 bonus, bool freeMint, address indexed to);
     event WinnerDrawn(uint256 indexed batchId, uint256 rank, address indexed winner);
 
     error Forbidden();
@@ -65,7 +65,7 @@ contract NFTMinter is Owned, INFTMinter {
         uint256 _price,
         uint8[2] memory _shares,
         uint8[] memory _winnerRatios,
-        uint256 _initialDiscountUntil,
+        uint256 _initialBonusUntil,
         uint256 _claimLimit,
         address _owner
     ) Owned(_owner) {
@@ -76,7 +76,7 @@ contract NFTMinter is Owned, INFTMinter {
         price = _price;
         shares = _shares;
         winnerRatios = _winnerRatios;
-        initialDiscountUntil = _initialDiscountUntil;
+        initialBonusUntil = _initialBonusUntil;
         claimLimit = _claimLimit;
     }
 
@@ -108,10 +108,10 @@ contract NFTMinter is Owned, INFTMinter {
         emit UpdatePrice(_price);
     }
 
-    function updateInitialDiscountUntil(uint256 _initialDiscountUntil) external onlyOwner {
-        initialDiscountUntil = _initialDiscountUntil;
+    function updateInitialBonusUntil(uint256 _initialBonusUntil) external onlyOwner {
+        initialBonusUntil = _initialBonusUntil;
 
-        emit UpdateInitialDiscountUntil(_initialDiscountUntil);
+        emit UpdateInitialBonusUntil(_initialBonusUntil);
     }
 
     function updateShares(uint8[2] memory _shares) external onlyOwner {
@@ -191,10 +191,8 @@ contract NFTMinter is Owned, INFTMinter {
             freeMintingOf[msg.sender] = freeMinting - 1;
         }
 
-        bool initialDiscount = block.timestamp < initialDiscountUntil;
-        uint256 discounted =
-            (amount >= 10) ? (initialDiscount ? 70 : 80) : (amount >= 5) ? (initialDiscount ? 80 : 88) : 100;
-        uint256 totalPrice = amount * price * discounted / 100;
+        uint256 rate = (amount >= 10) ? 80 : (amount >= 5) ? 88 : 100;
+        uint256 totalPrice = amount * price * rate / 100;
         if (msg.value < totalPrice) revert InsufficientValue();
 
         TransferLib.transferETH(treasury, totalPrice * shares[SHARES_TREASURY] / 100, address(0));
@@ -204,9 +202,10 @@ contract NFTMinter is Owned, INFTMinter {
             entrants.push(msg.sender);
         }
 
-        INFT(nft).draw{ value: INFT(nft).estimateRandomizerFee() }(amount + (freeMint ? 1 : 0), msg.sender);
+        uint256 bonus = block.timestamp < initialBonusUntil ? (amount >= 10 ? 5 : amount >= 5 ? 2 : 0) : 0;
+        INFT(nft).draw{ value: INFT(nft).estimateRandomizerFee() }(amount + bonus + (freeMint ? 1 : 0), msg.sender);
 
-        emit Mint(totalPrice, amount, msg.sender, freeMint);
+        emit Mint(totalPrice, amount, bonus, freeMint, msg.sender);
     }
 
     function onMint(uint256 tokenId, uint256 amount, address) external {

@@ -32,7 +32,7 @@ contract NFTMinterTest is Test {
 
     event PauseMinting();
     event ResumeMinting();
-    event Mint(uint256 price, uint256 amount, address indexed to, bool freeMint);
+    event Mint(uint256 price, uint256 amount, uint256 bonus, bool freeMint, address indexed to);
     event WinnerDrawn(uint256 indexed batchId, uint256 rank, address indexed winner);
     event TransferETH(address indexed to, uint256 amount);
 
@@ -49,6 +49,7 @@ contract NFTMinterTest is Test {
         winnerRatios[0] = WINNER_RATIO_GOLD;
         winnerRatios[1] = WINNER_RATIO_SILVER;
         winnerRatios[2] = WINNER_RATIO_BRONZE;
+        uint256 bonusUntil = vm.getBlockTimestamp() + 1 weeks;
         nft = new NFT("NFT", "NFT", address(randomizer), MIN_RANDOMIZER_GAS_LIMIT, address(0), owner);
         minter = new NFTMinter(
             address(nft),
@@ -58,7 +59,7 @@ contract NFTMinterTest is Test {
             PRICE,
             [SHARES_TREASURY, SHARES_GAME],
             winnerRatios,
-            vm.getBlockTimestamp() + 1 weeks,
+            bonusUntil,
             CLAIM_LIMIT,
             owner
         );
@@ -116,22 +117,22 @@ contract NFTMinterTest is Test {
     }
 
     function test_mint() public {
-        _mint(0, 0, 1, PRICE, alice);
-        _mint(1, 1, 5, PRICE * 5 * 80 / 100, alice);
-        _mint(2, 6, 10, PRICE * 10 * 70 / 100, alice);
+        _mint(0, 0, 1, true, PRICE, alice);
+        _mint(1, 1, 5, true, PRICE * 5 * 88 / 100, alice);
+        _mint(2, 8, 10, true, PRICE * 10 * 80 / 100, alice);
 
         _randomizerCallback(0, 0, 1, alice);
-        _randomizerCallback(1, 1, 5, alice);
-        _randomizerCallback(2, 6, 10, alice);
+        _randomizerCallback(1, 1, 7, alice);
+        _randomizerCallback(2, 8, 15, alice);
 
         vm.warp(vm.getBlockTimestamp() + 1 weeks);
-        _mint(3, 16, 1, PRICE, alice);
-        _mint(4, 17, 5, PRICE * 5 * 88 / 100, alice);
-        _mint(5, 22, 10, PRICE * 10 * 80 / 100, alice);
+        _mint(3, 23, 1, false, PRICE, alice);
+        _mint(4, 24, 5, false, PRICE * 5 * 88 / 100, alice);
+        _mint(5, 29, 10, false, PRICE * 10 * 80 / 100, alice);
 
-        _randomizerCallback(3, 16, 1, alice);
-        _randomizerCallback(4, 17, 5, alice);
-        _randomizerCallback(5, 22, 10, alice);
+        _randomizerCallback(3, 23, 1, alice);
+        _randomizerCallback(4, 24, 5, alice);
+        _randomizerCallback(5, 29, 10, alice);
     }
 
     function test_mint_withFreeMinting() public {
@@ -151,24 +152,34 @@ contract NFTMinterTest is Test {
     }
 
     function test_mint_100() public {
-        _mint(0, 0, 100, PRICE * 100 * 70 / 100, alice);
+        vm.warp(vm.getBlockTimestamp() + 1 weeks);
+        _mint(0, 0, 100, false, PRICE * 100 * 80 / 100, alice);
         _randomizerCallback(0, 0, 100, alice);
     }
 
-    function _mint(uint256 randomizerId, uint256 tokenId, uint256 amount, uint256 price, address from) internal {
+    function _mint(
+        uint256 randomizerId,
+        uint256 tokenId,
+        uint256 amount,
+        bool bonusApplied,
+        uint256 price,
+        address from
+    ) internal {
         changePrank(from, from);
+
+        uint256 bonus = (bonusApplied ? amount >= 10 ? 5 : amount >= 5 ? 2 : 0 : 0);
 
         vm.expectEmit();
         emit TransferETH(treasury, price * SHARES_TREASURY / 100);
         vm.expectEmit();
         emit TransferETH(address(game), price * SHARES_GAME / 100);
         vm.expectEmit();
-        emit Mint(price, amount, from, false);
+        emit Mint(price, amount, bonus, false, from);
         minter.mint{ value: price }(amount);
 
         (uint256 _tokenId, uint256 _amount, address _to, address _minter) = nft.pendingRandomizerRequests(randomizerId);
         assertEq(_tokenId, tokenId);
-        assertEq(_amount, amount);
+        assertEq(_amount, amount + bonus);
         assertEq(_to, from);
         assertEq(_minter, address(minter));
     }
@@ -183,17 +194,19 @@ contract NFTMinterTest is Test {
     }
 
     function test_onMint() public {
-        uint256 price = PRICE * 70 / 100;
-        _mint(0, 0, 100, 100 * price, alice);
-        _mint(1, 100, 100, 100 * price, alice);
-        _mint(2, 200, 100, 100 * price, alice);
-        _mint(3, 300, 100, 100 * price, alice);
-        _mint(4, 400, 100, 100 * price, alice);
-        _mint(5, 500, 100, 100 * price, bob);
-        _mint(6, 600, 100, 100 * price, bob);
-        _mint(7, 700, 100, 100 * price, bob);
-        _mint(8, 800, 100, 100 * price, charlie);
-        _mint(9, 900, 100, 100 * price, charlie);
+        vm.warp(vm.getBlockTimestamp() + 1 weeks + 3);
+
+        uint256 price = PRICE * 80 / 100;
+        _mint(0, 0, 100, false, 100 * price, alice);
+        _mint(1, 100, 100, false, 100 * price, alice);
+        _mint(2, 200, 100, false, 100 * price, alice);
+        _mint(3, 300, 100, false, 100 * price, alice);
+        _mint(4, 400, 100, false, 100 * price, alice);
+        _mint(5, 500, 100, false, 100 * price, bob);
+        _mint(6, 600, 100, false, 100 * price, bob);
+        _mint(7, 700, 100, false, 100 * price, bob);
+        _mint(8, 800, 100, false, 100 * price, charlie);
+        _mint(9, 900, 100, false, 100 * price, charlie);
 
         _randomizerCallback(0, 0, 100, alice);
         _randomizerCallback(1, 100, 100, alice);
@@ -220,13 +233,13 @@ contract NFTMinterTest is Test {
         vm.expectEmit();
         emit WinnerDrawn(1, 0, charlie);
         vm.expectEmit();
-        emit TransferETH(bob, jackpot * WINNER_RATIO_SILVER / 100);
+        emit TransferETH(alice, jackpot * WINNER_RATIO_SILVER / 100);
         vm.expectEmit();
-        emit WinnerDrawn(1, 1, bob);
+        emit WinnerDrawn(1, 1, alice);
         vm.expectEmit();
-        emit TransferETH(alice, jackpot * WINNER_RATIO_BRONZE / 100);
+        emit TransferETH(bob, jackpot * WINNER_RATIO_BRONZE / 100);
         vm.expectEmit();
-        emit WinnerDrawn(1, 2, alice);
+        emit WinnerDrawn(1, 2, bob);
         randomizer.processPendingRequest(10, bytes32(0));
 
         assertEq(minter.batchId(), 1);
