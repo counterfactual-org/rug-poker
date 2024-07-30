@@ -15,8 +15,9 @@ contract CardsFacet is BaseFacet {
     event BurnCard(address indexed account, uint256 indexed tokenId);
 
     error MaxCardsStaked();
+    error WornOut();
     error Forbidden();
-    error Underuse(uint256 tokenId);
+    error Underuse();
     error DurationNotElapsed();
 
     function playerOf(address account) external view returns (Player memory) {
@@ -58,6 +59,7 @@ contract CardsFacet is BaseFacet {
         IERC721(s.nft).transferFrom(msg.sender, address(this), tokenId);
 
         uint8 durability = App.cardDurability(tokenId);
+        if (durability == 0) revert WornOut();
         s.cardOf[tokenId] = Card(durability, true, false, msg.sender, uint64(block.timestamp));
         player.cards = cards + 1;
         player.lastDefendedAt = uint64(block.timestamp);
@@ -70,9 +72,10 @@ contract CardsFacet is BaseFacet {
     function removeCard(uint256 tokenId) external {
         Card memory card = s.cardOf[tokenId];
         if (card.owner != msg.sender) revert Forbidden();
-        if (card.underuse) revert Underuse(tokenId);
+        if (card.underuse) revert Underuse();
 
-        if (App.cardDurability(tokenId) > 0 && card.lastAddedAt + App.config().minDuration < block.timestamp) {
+        bool wornOut = App.cardDurability(tokenId) == 0;
+        if (!wornOut && card.lastAddedAt + App.config().minDuration < block.timestamp) {
             revert DurationNotElapsed();
         }
 
@@ -88,7 +91,9 @@ contract CardsFacet is BaseFacet {
         s.accReward[card.owner] = acc - reward;
         s.claimableRewardOf[card.owner] += reward;
 
-        App.decrementShares(card.owner, shares);
+        if (!wornOut) {
+            App.decrementShares(card.owner, shares);
+        }
 
         IERC721(s.nft).transferFrom(address(this), card.owner, tokenId);
 
@@ -98,7 +103,8 @@ contract CardsFacet is BaseFacet {
     function burnCard(uint256 tokenId) external {
         Card memory card = s.cardOf[tokenId];
         if (card.owner != msg.sender) revert Forbidden();
-        if (card.underuse) revert Underuse(tokenId);
+        if (card.underuse) revert Underuse();
+        if (App.cardDurability(tokenId) == 0) revert WornOut();
 
         App.checkpointUser(msg.sender);
 

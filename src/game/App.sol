@@ -265,15 +265,12 @@ library App {
         card.underuse = false;
 
         uint8 durability = card.durability;
-        if (durability == 0) revert WornOut(tokenId);
         card.durability = durability - 1;
 
         if (durability == 1) {
             address owner = card.owner;
-            card.added = false;
-            s.playerOf[owner].cards -= 1;
-
-            IERC721(s.nft).transferFrom(address(this), owner, tokenId);
+            App.checkpointUser(owner);
+            App.decrementShares(owner, App.cardShares(tokenId));
         }
     }
 }
