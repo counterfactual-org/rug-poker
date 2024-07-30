@@ -2,12 +2,22 @@
 pragma solidity ^0.8.24;
 
 import { App } from "../App.sol";
+
 import { AttackResult, Attack_ } from "../AppStorage.sol";
+import { COMMUNITY_CARDS, HOLE_CARDS, MAX_CARD_VALUE } from "../Constants.sol";
 import { BaseFacet } from "./BaseFacet.sol";
+import { IEvaluator } from "src/interfaces/IEvaluator.sol";
 import { IRandomizer } from "src/interfaces/IRandomizer.sol";
 
 contract AttckResolverFacet is BaseFacet {
     event ResolveAttack(uint256 indexed attackId, uint256 indexed randomizerId);
+    event EvaluateAttack(
+        IEvaluator.HandRank indexed rankAttack,
+        uint256 evalAttack,
+        IEvaluator.HandRank indexed rankDefense,
+        uint256 evalDefense,
+        AttackResult indexed result
+    );
 
     error AttackResolving();
     error AttackFinalized();
@@ -66,7 +76,9 @@ contract AttckResolverFacet is BaseFacet {
         App.checkpointUser(defender);
 
         bytes32 data = keccak256(abi.encodePacked(value, block.number, block.timestamp));
-        AttackResult result = App.evaluateAttack(s.attackingTokenIds[attackId], s.defendingTokenIds[attackId], data);
+        AttackResult result = _evaluateAttack(
+            s.attackingTokenIds[attackId], s.defendingTokenIds[attackId], s.defendingJokerCards[attackId], data
+        );
 
         if (result == AttackResult.Success) {
             _moveBooty(attacker, defender, _attack.bootyPercentage);
@@ -88,6 +100,47 @@ contract AttckResolverFacet is BaseFacet {
         _attack.result = result;
 
         App.finalizeAttack(attackId, _attack);
+    }
+
+    function _evaluateAttack(
+        uint256[HOLE_CARDS] memory attackingTokenIds,
+        uint256[HOLE_CARDS] memory defendingTokenIds,
+        uint8[] memory defendingJokerCards,
+        bytes32 data
+    ) internal returns (AttackResult result) {
+        uint256[] memory attackingCards = new uint256[](HOLE_CARDS + COMMUNITY_CARDS);
+        uint256[] memory defendingCards = new uint256[](HOLE_CARDS + COMMUNITY_CARDS);
+        uint256 jokersLength = defendingJokerCards.length;
+        for (uint256 i; i < HOLE_CARDS; ++i) {
+            uint8 rankA = App.cardRank(attackingTokenIds[i]);
+            uint8 suitA = App.cardSuit(attackingTokenIds[i]);
+            attackingCards[i] = rankA * 4 + suitA;
+            if (i < jokersLength) {
+                defendingCards[i] = defendingJokerCards[i];
+                continue;
+            }
+            uint8 rankD = App.cardRank(defendingTokenIds[i]);
+            uint8 suitD = App.cardSuit(defendingTokenIds[i]);
+            defendingCards[i] = rankD * 4 + suitD;
+        }
+        for (uint256 i; i < COMMUNITY_CARDS; ++i) {
+            uint8 card = uint8(data[i]) % MAX_CARD_VALUE;
+            attackingCards[HOLE_CARDS + i] = card;
+            defendingCards[HOLE_CARDS + i] = card;
+        }
+
+        (IEvaluator.HandRank handAttack, uint256 evalAttack) = IEvaluator(s.evaluator).handRank(attackingCards);
+        (IEvaluator.HandRank handDefense, uint256 evalDefense) = IEvaluator(s.evaluator).handRank(defendingCards);
+
+        if (evalAttack == evalDefense) {
+            result = AttackResult.Draw;
+        } else if (evalAttack < evalDefense) {
+            result = AttackResult.Success;
+        } else if (evalAttack > evalDefense) {
+            result = AttackResult.Fail;
+        }
+
+        emit EvaluateAttack(handAttack, evalAttack, handDefense, evalDefense, result);
     }
 
     function _moveBooty(address attacker, address defender, uint8 bootyPercentage) internal {

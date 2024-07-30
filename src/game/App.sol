@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.24;
 
-import { AppStorage, AttackResult, Attack_, Card, Config } from "./AppStorage.sol";
+import { AppStorage, Attack_, Card, Config } from "./AppStorage.sol";
 
 import {
-    COMMUNITY_CARDS,
     FIELD_DURABILITY,
     FIELD_RANK,
     FIELD_SUIT,
@@ -28,7 +27,6 @@ import {
     RANK_TWO
 } from "./Constants.sol";
 import { IERC721 } from "forge-std/interfaces/IERC721.sol";
-import { IEvaluator } from "src/interfaces/IEvaluator.sol";
 import { INFT } from "src/interfaces/INFT.sol";
 import { INFTMinter } from "src/interfaces/INFTMinter.sol";
 import { ArrayLib } from "src/libraries/ArrayLib.sol";
@@ -46,13 +44,6 @@ library App {
     event Checkpoint(uint256 accRewardPerShare, uint256 reserve);
     event AdjustShares(address indexed account, uint256 sharesSum, uint256 shares);
     event FinalizeAttack(uint256 indexed id);
-    event EvaluateAttack(
-        IEvaluator.HandRank indexed rankAttack,
-        uint256 evalAttack,
-        IEvaluator.HandRank indexed rankDefense,
-        uint256 evalDefense,
-        AttackResult indexed result
-    );
 
     error GasLimitTooLow();
     error InvalidAddress();
@@ -63,7 +54,6 @@ library App {
     error CardNotAdded(uint256 tokenId);
     error Underuse(uint256 tokenId);
     error NotCardOwner(uint256 tokenId);
-    error JokerNotAvailable(uint256 tokenId);
     error WornOut(uint256 tokenId);
 
     function appStorage() internal pure returns (AppStorage storage s) {
@@ -148,7 +138,6 @@ library App {
         if (!card.added) revert CardNotAdded(tokenId);
         if (card.underuse) revert Underuse(tokenId);
         if (card.owner != owner) revert NotCardOwner(tokenId);
-        if (cardRank(tokenId) == RANK_JOKER) revert JokerNotAvailable(tokenId);
         if (cardDurability(tokenId) == 0) revert WornOut(tokenId);
     }
 
@@ -178,6 +167,7 @@ library App {
 
     function updateConfig(Config memory c) internal {
         if (c.maxCards == 0) revert InvalidNumber();
+        if (c.maxJokers == 0 || c.maxJokers > HOLE_CARDS) revert InvalidNumber();
         if (c.maxAttacks == 0) revert InvalidNumber();
         if (c.maxBootyCards == 0 || c.maxBootyCards > HOLE_CARDS) revert InvalidNumber();
         if (c.minDuration < 1 days) revert InvalidPeriod();
@@ -244,25 +234,6 @@ library App {
         emit AdjustShares(account, sharesSum, _shares);
     }
 
-    function spendCard(uint256 tokenId) internal {
-        AppStorage storage s = appStorage();
-
-        Card storage card = s.cardOf[tokenId];
-        card.underuse = false;
-
-        uint8 durability = card.durability;
-        if (durability == 0) revert WornOut(tokenId);
-        card.durability = durability - 1;
-
-        if (durability == 1) {
-            address owner = card.owner;
-            card.added = false;
-            s.playerOf[owner].cards -= 1;
-
-            IERC721(s.nft).transferFrom(address(this), owner, tokenId);
-        }
-    }
-
     function finalizeAttack(uint256 attackId, Attack_ storage _attack) internal {
         AppStorage storage s = appStorage();
 
@@ -287,41 +258,22 @@ library App {
         emit FinalizeAttack(attackId);
     }
 
-    function evaluateAttack(
-        uint256[HOLE_CARDS] memory attackingTokenIds,
-        uint256[HOLE_CARDS] memory defendingTokenIds,
-        bytes32 data
-    ) internal returns (AttackResult result) {
+    function spendCard(uint256 tokenId) internal {
         AppStorage storage s = appStorage();
 
-        uint256[] memory attackingCards = new uint256[](HOLE_CARDS + COMMUNITY_CARDS);
-        uint256[] memory defendingCards = new uint256[](HOLE_CARDS + COMMUNITY_CARDS);
-        for (uint256 i; i < HOLE_CARDS; ++i) {
-            uint8 rankA = cardRank(attackingTokenIds[i]);
-            uint8 suitA = cardSuit(attackingTokenIds[i]);
-            attackingCards[i] = rankA * 4 + suitA;
-            uint8 rankD = cardRank(defendingTokenIds[i]);
-            uint8 suitD = cardSuit(defendingTokenIds[i]);
-            defendingCards[i] = rankD * 4 + suitD;
-        }
-        for (uint256 i; i < COMMUNITY_CARDS; ++i) {
-            uint8 rank = uint8(data[2 * i]) % 13;
-            uint8 suit = uint8(data[2 * i + 1]) % 4;
-            attackingCards[HOLE_CARDS + i] = rank * 4 + suit;
-            defendingCards[HOLE_CARDS + i] = rank * 4 + suit;
-        }
+        Card storage card = s.cardOf[tokenId];
+        card.underuse = false;
 
-        (IEvaluator.HandRank handAttack, uint256 evalAttack) = IEvaluator(s.evaluator).handRank(attackingCards);
-        (IEvaluator.HandRank handDefense, uint256 evalDefense) = IEvaluator(s.evaluator).handRank(defendingCards);
+        uint8 durability = card.durability;
+        if (durability == 0) revert WornOut(tokenId);
+        card.durability = durability - 1;
 
-        if (evalAttack == evalDefense) {
-            result = AttackResult.Draw;
-        } else if (evalAttack < evalDefense) {
-            result = AttackResult.Success;
-        } else if (evalAttack > evalDefense) {
-            result = AttackResult.Fail;
+        if (durability == 1) {
+            address owner = card.owner;
+            card.added = false;
+            s.playerOf[owner].cards -= 1;
+
+            IERC721(s.nft).transferFrom(address(this), owner, tokenId);
         }
-
-        emit EvaluateAttack(handAttack, evalAttack, handDefense, evalDefense, result);
     }
 }

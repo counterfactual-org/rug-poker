@@ -29,6 +29,7 @@ struct AppStorage {
     mapping(address attacker => mapping(address defender => bool)) hasAttacked;
     mapping(uint256 attackId => uint256[HOLE_CARDS]) attackingTokenIds;
     mapping(uint256 attackId => uint256[HOLE_CARDS]) defendingTokenIds;
+    mapping(uint256 attackId => uint8[]) defendingJokerCards;
     mapping(address account => uint256) incomingAttackId;
     mapping(address account => uint256[]) outgoingAttackIds;
     // attack resolver
@@ -37,6 +38,7 @@ struct AppStorage {
 
 struct Config {
     uint8 maxCards;
+    uint8 maxJokers;
     uint8 maxAttacks;
     uint8 maxBootyCards;
     uint32 minDuration;
