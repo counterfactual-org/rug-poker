@@ -57,7 +57,8 @@ contract CardsFacet is BaseFacet {
 
         IERC721(s.nft).transferFrom(msg.sender, address(this), tokenId);
 
-        s.cardOf[tokenId] = Card(false, msg.sender, uint64(block.timestamp));
+        uint8 durability = App.cardDurability(tokenId);
+        s.cardOf[tokenId] = Card(durability, true, false, msg.sender, uint64(block.timestamp));
         player.cards = cards + 1;
         player.lastDefendedAt = uint64(block.timestamp);
 
@@ -71,13 +72,13 @@ contract CardsFacet is BaseFacet {
         if (card.owner != msg.sender) revert Forbidden();
         if (card.underuse) revert Underuse(tokenId);
 
-        if (App.cardDurability(tokenId) > 0 && card.addedAt + App.config().minDuration < block.timestamp) {
+        if (App.cardDurability(tokenId) > 0 && card.lastAddedAt + App.config().minDuration < block.timestamp) {
             revert DurationNotElapsed();
         }
 
         App.checkpointUser(card.owner);
 
-        delete s.cardOf[tokenId];
+        s.cardOf[tokenId].added = false;
         s.playerOf[card.owner].cards -= 1;
 
         uint256 acc = s.accReward[card.owner];
@@ -101,7 +102,7 @@ contract CardsFacet is BaseFacet {
 
         App.checkpointUser(msg.sender);
 
-        delete s.cardOf[tokenId];
+        s.cardOf[tokenId].added = false;
         s.playerOf[msg.sender].cards -= 1;
 
         App.decrementShares(msg.sender, App.cardShares(tokenId));

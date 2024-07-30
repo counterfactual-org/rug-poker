@@ -60,6 +60,7 @@ library App {
     error InvalidPeriod();
     error InvalidBootyPercentages();
     error InvalidAttackFees();
+    error CardNotAdded(uint256 tokenId);
     error Underuse(uint256 tokenId);
     error NotCardOwner(uint256 tokenId);
     error JokerNotAvailable(uint256 tokenId);
@@ -79,6 +80,11 @@ library App {
 
     function cardDurability(uint256 tokenId) internal view returns (uint8) {
         AppStorage storage s = appStorage();
+
+        Card memory card = s.cardOf[tokenId];
+        if (card.lastAddedAt > 0) {
+            return card.durability;
+        }
 
         address nft = s.nft;
         address minter = INFT(nft).minter();
@@ -135,12 +141,13 @@ library App {
         }
     }
 
-    function assertCardAvailable(uint256 tokenId) internal view {
+    function assertCardAvailable(uint256 tokenId, address owner) internal view {
         AppStorage storage s = appStorage();
 
         Card memory card = s.cardOf[tokenId];
+        if (!card.added) revert CardNotAdded(tokenId);
         if (card.underuse) revert Underuse(tokenId);
-        if (card.owner != msg.sender) revert NotCardOwner(tokenId);
+        if (card.owner != owner) revert NotCardOwner(tokenId);
         if (cardRank(tokenId) == RANK_JOKER) revert JokerNotAvailable(tokenId);
         if (cardDurability(tokenId) == 0) revert WornOut(tokenId);
     }
@@ -243,17 +250,16 @@ library App {
         Card storage card = s.cardOf[tokenId];
         card.underuse = false;
 
-        uint8 durability = cardDurability(tokenId);
-        address nft = s.nft;
-        bytes32 data = INFT(nft).dataOf(tokenId);
-        INFT(nft).updateData(tokenId, data.setByte(FIELD_DURABILITY, bytes1(--durability)));
+        uint8 durability = card.durability;
+        if (durability == 0) revert WornOut(tokenId);
+        card.durability = durability - 1;
 
-        if (durability == 0) {
+        if (durability == 1) {
             address owner = card.owner;
-            delete s.cardOf[tokenId];
+            card.added = false;
             s.playerOf[owner].cards -= 1;
 
-            IERC721(nft).transferFrom(address(this), owner, tokenId);
+            IERC721(s.nft).transferFrom(address(this), owner, tokenId);
         }
     }
 

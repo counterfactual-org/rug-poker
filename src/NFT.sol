@@ -26,7 +26,6 @@ contract NFT is ERC721, Owned, IRandomizerCallback, INFT {
     address public tokenURIRenderer;
 
     address public minter;
-    mapping(address => bool) public isManager;
 
     mapping(uint256 randomizerId => RandomizerRequest) public pendingRandomizerRequests;
 
@@ -37,8 +36,6 @@ contract NFT is ERC721, Owned, IRandomizerCallback, INFT {
     event UpdateRandomizerGasLimit(uint256 gasLimit);
     event UpdateTokenURIRenderer(address indexed tokenURIRenderer);
     event UpdateMinter(address indexed account);
-    event UpdateManager(address indexed account, bool indexed isManager);
-    event UpdateData(uint256 indexed id, bytes32 data);
     event Draw(uint256 indexed tokenId, uint256 amount, address indexed to, uint256 indexed randomizerId);
     event Mint(
         uint256 indexed tokenId, uint256 amount, address indexed to, address indexed minter, uint256 randomizerId
@@ -54,11 +51,6 @@ contract NFT is ERC721, Owned, IRandomizerCallback, INFT {
 
     modifier onlyMinter() {
         if (msg.sender != minter) revert Forbidden();
-        _;
-    }
-
-    modifier onlyManager() {
-        if (!isManager[msg.sender]) revert Forbidden();
         _;
     }
 
@@ -115,21 +107,9 @@ contract NFT is ERC721, Owned, IRandomizerCallback, INFT {
         emit UpdateMinter(account);
     }
 
-    function updateManager(address account, bool _isManager) external onlyOwner {
-        if (account == address(0)) revert InvalidAddress();
+    function burn(uint256 id) external {
+        if (msg.sender != ownerOf(id)) revert Forbidden();
 
-        isManager[account] = _isManager;
-
-        emit UpdateManager(account, _isManager);
-    }
-
-    function updateData(uint256 id, bytes32 newData) external onlyManager {
-        dataOf[id] = newData;
-
-        emit UpdateData(id, newData);
-    }
-
-    function burn(uint256 id) external onlyManager {
         _burn(id);
     }
 

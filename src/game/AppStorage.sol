@@ -53,9 +53,11 @@ struct Player {
 }
 
 struct Card {
+    uint8 durability;
+    bool added;
     bool underuse;
     address owner;
-    uint64 addedAt;
+    uint64 lastAddedAt;
 }
 
 struct Attack_ {

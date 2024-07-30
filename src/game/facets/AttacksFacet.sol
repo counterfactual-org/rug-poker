@@ -29,7 +29,7 @@ contract AttcksFacet is BaseFacet {
     error AttackFinalized();
     error AttackOver();
     error Forbidden();
-    error WornOut(uint256 tokenId);
+    error WornOut();
     error NotJoker();
     error NotJokerOwner();
     error AlreadyDefended();
@@ -82,7 +82,7 @@ contract AttcksFacet is BaseFacet {
 
         for (uint256 i; i < tokenIds.length; ++i) {
             uint256 tokenId = tokenIds[i];
-            App.assertCardAvailable(tokenId);
+            App.assertCardAvailable(tokenId, msg.sender);
             s.cardOf[tokenId].underuse = true;
         }
 
@@ -107,7 +107,7 @@ contract AttcksFacet is BaseFacet {
         if (_attack.startedAt + App.config().attackPeriod < block.timestamp) revert AttackOver();
         if (msg.sender != _attack.defender) revert Forbidden();
 
-        if (App.cardDurability(tokenId) == 0) revert WornOut(tokenId);
+        if (App.cardDurability(tokenId) == 0) revert WornOut();
         if (App.cardRank(tokenId) != RANK_JOKER) revert NotJoker();
         if (msg.sender != IERC721(s.nft).ownerOf(tokenId)) revert NotJokerOwner();
 
@@ -135,7 +135,7 @@ contract AttcksFacet is BaseFacet {
 
         for (uint256 i; i < tokenIds.length; ++i) {
             uint256 tokenId = tokenIds[i];
-            App.assertCardAvailable(tokenId);
+            App.assertCardAvailable(tokenId, msg.sender);
             s.cardOf[tokenId].underuse = true;
         }
 

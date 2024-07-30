@@ -10,8 +10,6 @@ interface INFT {
 
     function estimateRandomizerFee() external view returns (uint256);
 
-    function updateData(uint256 id, bytes32 data) external;
-
     function draw(uint256 amount, address to) external payable;
 
     function burn(uint256 id) external;
