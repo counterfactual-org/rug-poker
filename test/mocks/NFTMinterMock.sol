@@ -11,10 +11,14 @@ contract NFTMinterMock is INFTMinter {
         nft = _nft;
     }
 
+    function isAirdrop(uint256) external pure returns (bool) {
+        return false;
+    }
+
     function increaseFreeMintingOf(address account) external { }
 
     function mint(uint256 amount) external payable {
-        INFT(nft).draw{ value: msg.value }(amount, msg.sender, false);
+        INFT(nft).draw{ value: msg.value }(amount, msg.sender);
     }
 
     function onMint(uint256 tokenId, uint256 amount, address to) external {

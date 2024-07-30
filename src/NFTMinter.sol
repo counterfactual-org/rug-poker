@@ -25,6 +25,7 @@ contract NFTMinter is Owned, INFTMinter {
     mapping(bytes32 merkleRoot => bool) public isMerkleRoot;
     mapping(bytes32 merkleRoot => mapping(address account => bool)) public hasClaimed;
     mapping(bytes32 merkleRoot => uint256) public totalClaimed;
+    mapping(uint256 id => bool) public isAirdrop;
 
     mapping(address account => uint256) public freeMintingOf;
 
@@ -168,7 +169,12 @@ contract NFTMinter is Owned, INFTMinter {
         hasClaimed[merkleRoot][msg.sender] = true;
         totalClaimed[merkleRoot] = _totalClaimed;
 
-        INFT(nft).draw{ value: INFT(nft).estimateRandomizerFee() }(amount, msg.sender, true);
+        uint256 tokenId = INFT(nft).nextTokenId();
+        for (uint256 i; i < amount; ++i) {
+            isAirdrop[tokenId + i] = true;
+        }
+
+        INFT(nft).draw{ value: INFT(nft).estimateRandomizerFee() }(amount, msg.sender);
 
         emit Claim(merkleRoot, msg.sender, amount);
     }
@@ -198,7 +204,7 @@ contract NFTMinter is Owned, INFTMinter {
             entrants.push(msg.sender);
         }
 
-        INFT(nft).draw{ value: INFT(nft).estimateRandomizerFee() }(amount + (freeMint ? 1 : 0), msg.sender, false);
+        INFT(nft).draw{ value: INFT(nft).estimateRandomizerFee() }(amount + (freeMint ? 1 : 0), msg.sender);
 
         emit Mint(totalPrice, amount, msg.sender, freeMint);
     }

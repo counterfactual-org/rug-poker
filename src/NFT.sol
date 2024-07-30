@@ -33,7 +33,6 @@ contract NFT is ERC721, Owned, IRandomizerCallback, INFT {
     uint256 public nextTokenId;
 
     mapping(uint256 id => bytes32) public dataOf;
-    mapping(uint256 id => bool) public isAirdrop;
 
     event UpdateRandomizerGasLimit(uint256 gasLimit);
     event UpdateTokenURIRenderer(address indexed tokenURIRenderer);
@@ -134,7 +133,7 @@ contract NFT is ERC721, Owned, IRandomizerCallback, INFT {
         _burn(id);
     }
 
-    function draw(uint256 amount, address to, bool airdrop) external payable onlyMinter {
+    function draw(uint256 amount, address to) external payable onlyMinter {
         if (amount == 0 || amount > MINTING_LIMIT) revert InvalidAmount();
         if (to == address(0)) revert InvalidAddress();
 
@@ -147,7 +146,6 @@ contract NFT is ERC721, Owned, IRandomizerCallback, INFT {
         uint256 randomizerId = IRandomizer(_randomizer).request(randomizerGasLimit);
         uint256 tokenId = nextTokenId;
         pendingRandomizerRequests[randomizerId] = RandomizerRequest(tokenId, amount, to, msg.sender);
-        isAirdrop[tokenId] = airdrop;
 
         nextTokenId = tokenId + amount;
 

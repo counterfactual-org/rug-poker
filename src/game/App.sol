@@ -30,6 +30,7 @@ import {
 import { IERC721 } from "forge-std/interfaces/IERC721.sol";
 import { IEvaluator } from "src/interfaces/IEvaluator.sol";
 import { INFT } from "src/interfaces/INFT.sol";
+import { INFTMinter } from "src/interfaces/INFTMinter.sol";
 import { ArrayLib } from "src/libraries/ArrayLib.sol";
 import { Bytes32Lib } from "src/libraries/Bytes32Lib.sol";
 
@@ -79,8 +80,10 @@ library App {
     function cardDurability(uint256 tokenId) internal view returns (uint8) {
         AppStorage storage s = appStorage();
 
-        bytes32 data = INFT(s.nft).dataOf(tokenId);
-        return INFT(s.nft).isAirdrop(tokenId)
+        address nft = s.nft;
+        address minter = INFT(nft).minter();
+        bytes32 data = INFT(nft).dataOf(tokenId);
+        return INFTMinter(minter).isAirdrop(tokenId)
             ? MIN_DURABILITY
             : MIN_DURABILITY + (uint8(data[FIELD_DURABILITY]) % (MAX_DURABILITY - MIN_DURABILITY));
     }
@@ -88,7 +91,9 @@ library App {
     function cardRank(uint256 tokenId) internal view returns (uint8) {
         AppStorage storage s = appStorage();
 
-        bytes32 data = INFT(s.nft).dataOf(tokenId);
+        address nft = s.nft;
+        address minter = INFT(nft).minter();
+        bytes32 data = INFT(nft).dataOf(tokenId);
         uint8 value = uint8(data[FIELD_RANK]);
         if (value < 32) return RANK_TWO;
         if (value < 62) return RANK_THREE;
@@ -102,7 +107,7 @@ library App {
         if (value < 228) return RANK_JACK;
         if (value < 239) return RANK_QUEEN;
         if (value < 249) return RANK_KING;
-        if (INFT(s.nft).isAirdrop(tokenId) || value < 255) return RANK_ACE;
+        if (INFTMinter(minter).isAirdrop(tokenId) || value < 255) return RANK_ACE;
         return RANK_JOKER;
     }
 
@@ -239,15 +244,16 @@ library App {
         card.underuse = false;
 
         uint8 durability = cardDurability(tokenId);
-        bytes32 data = INFT(s.nft).dataOf(tokenId);
-        INFT(s.nft).updateData(tokenId, data.setByte(FIELD_DURABILITY, bytes1(--durability)));
+        address nft = s.nft;
+        bytes32 data = INFT(nft).dataOf(tokenId);
+        INFT(nft).updateData(tokenId, data.setByte(FIELD_DURABILITY, bytes1(--durability)));
 
         if (durability == 0) {
             address owner = card.owner;
             delete s.cardOf[tokenId];
             s.playerOf[owner].cards -= 1;
 
-            IERC721(s.nft).transferFrom(address(this), owner, tokenId);
+            IERC721(nft).transferFrom(address(this), owner, tokenId);
         }
     }
 

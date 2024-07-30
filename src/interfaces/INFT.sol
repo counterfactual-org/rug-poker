@@ -8,13 +8,11 @@ interface INFT {
 
     function dataOf(uint256 id) external view returns (bytes32);
 
-    function isAirdrop(uint256 id) external view returns (bool);
-
     function estimateRandomizerFee() external view returns (uint256);
 
     function updateData(uint256 id, bytes32 data) external;
 
-    function draw(uint256 amount, address to, bool airdrop) external payable;
+    function draw(uint256 amount, address to) external payable;
 
     function burn(uint256 id) external;
 }
