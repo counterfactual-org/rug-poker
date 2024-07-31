@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.24;
 
-import { HOLE_CARDS } from "../Constants.sol";
-import { Config, GameStorage } from "../GameStorage.sol";
+import { HOLE_CARDS } from "../GameConstants.sol";
+import { GameConfig, GameStorage } from "../GameStorage.sol";
 
 import { IERC721 } from "forge-std/interfaces/IERC721.sol";
 import { IEvaluator } from "src/interfaces/IEvaluator.sol";
 import { INFT } from "src/interfaces/INFT.sol";
 
-library Configs {
+library GameConfigs {
     uint256 constant MIN_RANDOMIZER_GAS_LIMIT = 100_000;
 
     error GasLimitTooLow();
@@ -24,7 +24,7 @@ library Configs {
         }
     }
 
-    function latest() internal view returns (Config memory) {
+    function latest() internal view returns (GameConfig memory) {
         GameStorage storage s = gameStorage();
 
         return s.configs[s.configVersion];
@@ -60,7 +60,7 @@ library Configs {
         gameStorage().treasury = _treasury;
     }
 
-    function updateConfig(Config memory c) internal {
+    function updateConfig(GameConfig memory c) internal {
         if (c.maxCards == 0) revert InvalidNumber();
         if (c.maxJokers == 0 || c.maxJokers > HOLE_CARDS) revert InvalidNumber();
         if (c.maxAttacks == 0) revert InvalidNumber();

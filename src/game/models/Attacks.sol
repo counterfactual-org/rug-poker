@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.24;
 
-import { COMMUNITY_CARDS, HOLE_CARDS } from "../Constants.sol";
+import { COMMUNITY_CARDS, HOLE_CARDS } from "../GameConstants.sol";
 import { AttackResult, Attack_, GameStorage } from "../GameStorage.sol";
 import { Card, Cards } from "./Cards.sol";
-import { Config, Configs } from "./Configs.sol";
+import { GameConfig, GameConfigs } from "./GameConfigs.sol";
 import { Player, Players } from "./Players.sol";
 import { Rewards } from "./Rewards.sol";
 
@@ -13,7 +13,7 @@ import { ArrayLib } from "src/libraries/ArrayLib.sol";
 
 library Attacks {
     using ArrayLib for uint256[];
-    using Configs for Config;
+    using GameConfigs for GameConfig;
     using Players for Player;
     using Cards for Card;
 
@@ -70,7 +70,7 @@ library Attacks {
         }
 
         uint256 id = s.lastAttackId + 1;
-        uint8 booty = Configs.latest().bootyPercentages[bootyTier];
+        uint8 booty = GameConfigs.latest().bootyPercentages[bootyTier];
         s.attacks[id] = Attack_(id, false, false, AttackResult.None, booty, attacker, defender, uint64(block.timestamp));
         s.lastAttackId = id;
 
@@ -93,7 +93,7 @@ library Attacks {
         GameStorage storage s = gameStorage();
 
         (uint256 attackId, address attacker, address defender) = (self.id, self.attacker, self.defender);
-        Config memory c = Configs.latest();
+        GameConfig memory c = GameConfigs.latest();
         if (sender != defender) revert Forbidden();
         if (self.resolving) revert AttackResolving();
         if (self.finalized) revert AttackFinalized();
@@ -171,7 +171,7 @@ library Attacks {
         } else if (result == AttackResult.Fail) {
             (address attacker, address defender) = (self.attacker, self.defender);
             uint256 sharesDelta;
-            uint256 bootyCards = uint256(uint8(random[4])) % Configs.latest().maxBootyCards + 1;
+            uint256 bootyCards = uint256(uint8(random[4])) % GameConfigs.latest().maxBootyCards + 1;
             for (uint256 i; i < bootyCards; ++i) {
                 uint256 index = uint256(uint8(random[(5 + i) % 32])) % s.attackingTokenIds[id].length;
                 uint256 tokenId = s.attackingTokenIds[id][index];
@@ -215,8 +215,8 @@ library Attacks {
             defendingCards[HOLE_CARDS + i] = card;
         }
 
-        (IEvaluator.HandRank handAttack, uint256 evalAttack) = Configs.evaluator().handRank(attackingCards);
-        (IEvaluator.HandRank handDefense, uint256 evalDefense) = Configs.evaluator().handRank(defendingCards);
+        (IEvaluator.HandRank handAttack, uint256 evalAttack) = GameConfigs.evaluator().handRank(attackingCards);
+        (IEvaluator.HandRank handDefense, uint256 evalDefense) = GameConfigs.evaluator().handRank(defendingCards);
 
         if (evalAttack < evalDefense) {
             result = AttackResult.Success;

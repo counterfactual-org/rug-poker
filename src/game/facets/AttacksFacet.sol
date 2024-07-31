@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.24;
 
-import { HOLE_CARDS } from "../Constants.sol";
+import { HOLE_CARDS } from "../GameConstants.sol";
 import { Attack_, Attacks } from "../models/Attacks.sol";
 import { Card, Cards } from "../models/Cards.sol";
-import { Configs } from "../models/Configs.sol";
+import { GameConfigs } from "../models/GameConfigs.sol";
 
 import { Player, Players } from "../models/Players.sol";
 import { Randomizers } from "../models/Randomizers.sol";
@@ -113,7 +113,7 @@ contract AttcksFacet is BaseFacet, IRandomizerCallback {
 
             emit ResolveAttack(attackId, randomizerId);
         } else {
-            if (block.timestamp <= a.startedAt + Configs.latest().attackPeriod) revert AttackOngoing();
+            if (block.timestamp <= a.startedAt + GameConfigs.latest().attackPeriod) revert AttackOngoing();
 
             Rewards.moveBooty(a.attacker, a.defender, a.bootyPercentage);
 

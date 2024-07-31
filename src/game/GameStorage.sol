@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.24;
 
-import { HOLE_CARDS } from "./Constants.sol";
+import { HOLE_CARDS } from "./GameConstants.sol";
 
 struct GameStorage {
     // configs
@@ -11,7 +11,7 @@ struct GameStorage {
     uint256 randomizerGasLimit;
     address treasury;
     uint256 configVersion;
-    mapping(uint256 version => Config) configs;
+    mapping(uint256 version => GameConfig) configs;
     // rewards
     uint256 reserve;
     uint256 accRewardPerShare;
@@ -38,7 +38,7 @@ struct GameStorage {
     mapping(uint256 randomizerId => uint256 attackId) pendingRandomizerRequests;
 }
 
-struct Config {
+struct GameConfig {
     uint8 maxCards;
     uint8 maxJokers;
     uint8 maxAttacks;

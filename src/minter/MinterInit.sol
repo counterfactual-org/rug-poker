@@ -7,30 +7,24 @@ import { IERC165 } from "diamond/interfaces/IERC165.sol";
 import { IERC173 } from "diamond/interfaces/IERC173.sol";
 import { LibDiamond } from "diamond/libraries/LibDiamond.sol";
 
-import { GameConfig, GameStorage } from "./GameStorage.sol";
-import { GameConfigs } from "./models/GameConfigs.sol";
+import { MinterConfig, MinterStorage } from "./MinterStorage.sol";
+import { MinterConfigs } from "./models/MinterConfigs.sol";
 
-contract GameInit {
-    function init(
-        address nft,
-        address randomizer,
-        address evaluator,
-        uint256 randomizerGasLimit,
-        address treasury,
-        GameConfig memory c
-    ) external {
+contract MinterInit {
+    function init(address _nft, uint256 _tokensInBatch, address _treasury, address _game, MinterConfig memory c)
+        external
+    {
         LibDiamond.DiamondStorage storage ds = LibDiamond.diamondStorage();
         ds.supportedInterfaces[type(IERC165).interfaceId] = true;
         ds.supportedInterfaces[type(IDiamondCut).interfaceId] = true;
         ds.supportedInterfaces[type(IDiamondLoupe).interfaceId] = true;
         ds.supportedInterfaces[type(IERC173).interfaceId] = true;
 
-        GameStorage storage s = GameConfigs.gameStorage();
-        s.nft = nft;
-        s.randomizer = randomizer;
-        GameConfigs.updateEvaluator(evaluator);
-        GameConfigs.updateRandomizerGasLimit(randomizerGasLimit);
-        GameConfigs.updateTreasury(treasury);
-        GameConfigs.updateConfig(c);
+        MinterStorage storage s = MinterConfigs.minterStorage();
+        s.nft = _nft;
+        s.tokensInBatch = _tokensInBatch;
+        MinterConfigs.updateTreasury(_treasury);
+        MinterConfigs.updateGame(_game);
+        MinterConfigs.updateConfig(c);
     }
 }

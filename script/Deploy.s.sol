@@ -6,7 +6,6 @@ import { BaseScript } from "./BaseScript.s.sol";
 import { AuctionHouse } from "src/AuctionHouse.sol";
 // import { Game } from "src/Game.sol";
 import { NFT } from "src/NFT.sol";
-import { NFTMinter } from "src/NFTMinter.sol";
 import { SvgRendererV1 } from "src/SvgRendererV1.sol";
 import { TokenURIRendererV1 } from "src/TokenURIRendererV1.sol";
 
@@ -41,7 +40,7 @@ contract DeployScript is BaseScript {
         }
 
         address game;
-        // TODO
+        // TODO: deploy Game
         // address game = _loadDeployment("Game");
         // if (game == address(0)) {
         //     game = address(
@@ -50,29 +49,30 @@ contract DeployScript is BaseScript {
         //     _saveDeployment("Game", address(game));
         // }
 
-        address nftMinter = _loadDeployment("NFTMinter");
-        if (nftMinter == address(0)) {
-            uint8[] memory winnerRatios = new uint8[](3);
-            winnerRatios[0] = 50;
-            winnerRatios[1] = 30;
-            winnerRatios[2] = 20;
-            uint256 initialBonusUntil = (block.timestamp + 2 weeks) * 1 days / 1 days;
-            nftMinter = address(
-                new NFTMinter{ salt: 0 }(
-                    nft,
-                    TOKENS_IN_BATCH,
-                    TREASURY,
-                    game,
-                    PRICE,
-                    [30, 50],
-                    winnerRatios,
-                    initialBonusUntil,
-                    CLAIM_LIMIT,
-                    owner
-                )
-            );
-            _saveDeployment("NFTMinter", address(nftMinter));
-        }
+        // TODO: deploy NFTMinter
+        // address nftMinter = _loadDeployment("NFTMinter");
+        // if (nftMinter == address(0)) {
+        //     uint8[] memory winnerRatios = new uint8[](3);
+        //     winnerRatios[0] = 50;
+        //     winnerRatios[1] = 30;
+        //     winnerRatios[2] = 20;
+        //     uint256 initialBonusUntil = (block.timestamp + 2 weeks) * 1 days / 1 days;
+        //     nftMinter = address(
+        //         new NFTMinter{ salt: 0 }(
+        //             nft,
+        //             TOKENS_IN_BATCH,
+        //             TREASURY,
+        //             game,
+        //             PRICE,
+        //             [30, 50],
+        //             winnerRatios,
+        //             initialBonusUntil,
+        //             CLAIM_LIMIT,
+        //             owner
+        //         )
+        //     );
+        //     _saveDeployment("NFTMinter", address(nftMinter));
+        // }
 
         address svgRenderer = _loadDeployment("SvgRendererV1");
         if (svgRenderer == address(0)) {

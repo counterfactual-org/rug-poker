@@ -16,9 +16,9 @@ import {
     RANK_TEN,
     RANK_THREE,
     RANK_TWO
-} from "../Constants.sol";
+} from "../GameConstants.sol";
 import { Card, GameStorage } from "../GameStorage.sol";
-import { Config, Configs } from "./Configs.sol";
+import { GameConfig, GameConfigs } from "./GameConfigs.sol";
 import { Player, Players } from "./Players.sol";
 import { Rewards } from "./Rewards.sol";
 import { INFT } from "src/interfaces/INFT.sol";
@@ -73,12 +73,12 @@ library Cards {
     }
 
     function durationElapsed(Card storage self) internal view returns (bool) {
-        return self.lastAddedAt + Configs.latest().minDuration < block.timestamp;
+        return self.lastAddedAt + GameConfigs.latest().minDuration < block.timestamp;
     }
 
     function deriveDurability(uint256 tokenId) internal view returns (uint8) {
-        Config memory c = Configs.latest();
-        INFT nft = Configs.nft();
+        GameConfig memory c = GameConfigs.latest();
+        INFT nft = GameConfigs.nft();
         if (INFTMinter(nft.minter()).isAirdrop(tokenId)) return c.minDurability;
 
         bytes32 data = nft.dataOf(tokenId);
@@ -86,7 +86,7 @@ library Cards {
     }
 
     function deriveRank(uint256 tokenId) internal view returns (uint8) {
-        INFT nft = Configs.nft();
+        INFT nft = GameConfigs.nft();
         bytes32 data = nft.dataOf(tokenId);
         uint8 value = uint8(data[FIELD_RANK]);
         if (value < 32) return RANK_TWO;
@@ -106,7 +106,7 @@ library Cards {
     }
 
     function deriveSuit(uint256 tokenId) internal view returns (uint8) {
-        bytes32 data = Configs.nft().dataOf(tokenId);
+        bytes32 data = GameConfigs.nft().dataOf(tokenId);
         return uint8(data[FIELD_SUIT]) % 4;
     }
 

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import { Card, Cards } from "../models/Cards.sol";
-import { Configs } from "../models/Configs.sol";
+import { GameConfigs } from "../models/GameConfigs.sol";
 import { Player, Players } from "../models/Players.sol";
 import { BaseFacet } from "./BaseFacet.sol";
 
@@ -51,7 +51,7 @@ contract CardsFacet is BaseFacet {
     function addCard(uint256 tokenId) external {
         Player storage player = Players.get(msg.sender);
         if (!player.initialized()) revert NotPlayer();
-        if (player.cards >= Configs.latest().maxCards) revert MaxCardsStaked();
+        if (player.cards >= GameConfigs.latest().maxCards) revert MaxCardsStaked();
 
         player.checkpoint();
         player.increaseFreeMintingIfHasNotPlayed();
@@ -61,7 +61,7 @@ contract CardsFacet is BaseFacet {
             card = Cards.init(tokenId, msg.sender);
         }
 
-        Configs.erc721().transferFrom(msg.sender, address(this), tokenId);
+        GameConfigs.erc721().transferFrom(msg.sender, address(this), tokenId);
 
         player.incrementCards();
         player.incrementShares(card.shares());
@@ -89,7 +89,7 @@ contract CardsFacet is BaseFacet {
             player.decrementShares(card.shares());
         }
 
-        Configs.erc721().transferFrom(address(this), msg.sender, tokenId);
+        GameConfigs.erc721().transferFrom(address(this), msg.sender, tokenId);
 
         emit RemoveCard(msg.sender, tokenId);
     }
@@ -110,7 +110,7 @@ contract CardsFacet is BaseFacet {
         player.decrementCards();
         player.decrementShares(card.shares());
 
-        Configs.nft().burn(tokenId);
+        GameConfigs.nft().burn(tokenId);
 
         emit BurnCard(msg.sender, tokenId);
     }

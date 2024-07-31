@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.24;
 
-import { Config, Configs } from "../models/Configs.sol";
+import { GameConfig, GameConfigs } from "../models/GameConfigs.sol";
 import { BaseFacet } from "./BaseFacet.sol";
 
-contract ConfigsFacet is BaseFacet {
+contract GameConfigsFacet is BaseFacet {
     event UpdateRandomizerGasLimit(uint256 gasLimit);
     event UpdateEvaluator(address indexed evaluator);
     event UpdateTreasury(address indexed treasury);
@@ -30,30 +30,30 @@ contract ConfigsFacet is BaseFacet {
         return s.treasury;
     }
 
-    function config() external view returns (Config memory) {
-        return Configs.latest();
+    function config() external view returns (GameConfig memory) {
+        return GameConfigs.latest();
     }
 
     function updateRandomizerGasLimit(uint256 _randomizerGasLimit) external onlyOwner {
-        Configs.updateRandomizerGasLimit(_randomizerGasLimit);
+        GameConfigs.updateRandomizerGasLimit(_randomizerGasLimit);
 
         emit UpdateRandomizerGasLimit(_randomizerGasLimit);
     }
 
     function updateEvaluator(address _evaluator) external onlyOwner {
-        Configs.updateEvaluator(_evaluator);
+        GameConfigs.updateEvaluator(_evaluator);
 
         emit UpdateEvaluator(_evaluator);
     }
 
     function updateTreasury(address _treasury) external onlyOwner {
-        Configs.updateTreasury(_treasury);
+        GameConfigs.updateTreasury(_treasury);
 
         emit UpdateTreasury(_treasury);
     }
 
-    function updateConfig(Config memory c) external {
-        Configs.updateConfig(c);
+    function updateConfig(GameConfig memory c) external {
+        GameConfigs.updateConfig(c);
 
         emit UpdateConfig();
     }

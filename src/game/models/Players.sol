@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import { Card, GameStorage, Player } from "../GameStorage.sol";
 import { isValidUsername } from "../utils/StringUtils.sol";
 import { Cards } from "./Cards.sol";
-import { Configs } from "./Configs.sol";
+import { GameConfigs } from "./GameConfigs.sol";
 import { Rewards } from "./Rewards.sol";
 import { INFT } from "src/interfaces/INFT.sol";
 import { INFTMinter } from "src/interfaces/INFTMinter.sol";
@@ -46,7 +46,7 @@ library Players {
 
     function isImmune(Player storage self) internal view returns (bool) {
         uint256 lastDefendedAt = self.lastDefendedAt;
-        return lastDefendedAt > 0 && block.timestamp < lastDefendedAt + Configs.latest().immunePeriod;
+        return lastDefendedAt > 0 && block.timestamp < lastDefendedAt + GameConfigs.latest().immunePeriod;
     }
 
     function updateUsername(Player storage self, bytes32 username) internal {
@@ -80,7 +80,7 @@ library Players {
         GameStorage storage s = gameStorage();
 
         address account = self.account;
-        if (s.outgoingAttackIds[account].length >= Configs.latest().maxAttacks) revert AttackingMax();
+        if (s.outgoingAttackIds[account].length >= GameConfigs.latest().maxAttacks) revert AttackingMax();
 
         s.outgoingAttackIds[account].push(attackId);
 
@@ -141,7 +141,7 @@ library Players {
     function deductFee(Player storage self, uint8 bootyTier) internal returns (uint256 fee) {
         GameStorage storage s = gameStorage();
         uint256 acc = s.accReward[self.account];
-        fee = Configs.latest().attackFees[bootyTier];
+        fee = GameConfigs.latest().attackFees[bootyTier];
         if (acc < fee) revert InsufficientFee();
         s.accReward[self.account] = acc - fee;
     }
