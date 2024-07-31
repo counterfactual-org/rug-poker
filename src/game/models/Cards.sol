@@ -43,7 +43,7 @@ library Cards {
     }
 
     function get(uint256 tokenId) internal view returns (Card storage self) {
-        return gameStorage().cardOf[tokenId];
+        return gameStorage().cards[tokenId];
     }
 
     function init(uint256 tokenId, address owner) internal returns (Card storage self) {
@@ -54,8 +54,6 @@ library Cards {
         self.rank = deriveRank(tokenId);
         self.suit = deriveSuit(tokenId);
         self.lastAddedAt = uint64(block.timestamp);
-
-        Rewards.incrementShares(owner, shares(self));
     }
 
     function initialized(Card storage self) internal view returns (bool) {
@@ -141,10 +139,6 @@ library Cards {
 
         uint256 _shares = shares(self);
         Rewards.claim(owner, _shares);
-        // if it's wornOut, already decrementShares was called in spend()
-        if (!wornOut(self)) {
-            Rewards.decrementShares(owner, _shares);
-        }
     }
 
     function spend(Card storage self) internal {
@@ -154,7 +148,7 @@ library Cards {
         self.durability = durability - 1;
 
         if (durability == 1) {
-            Rewards.decrementShares(self.owner, shares(self));
+            Players.get(self.owner).decrementShares(shares(self));
         }
     }
 }

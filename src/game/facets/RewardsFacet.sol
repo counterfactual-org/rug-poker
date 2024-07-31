@@ -14,19 +14,27 @@ contract RewardsFacet is BaseFacet {
     error NoClaimableReward();
 
     function claimableRewardOf(address account) external view returns (uint256) {
-        return s.claimableRewardOf[account];
+        return s.claimableReward[account];
     }
 
     function accRewardOf(address account) external view returns (uint256) {
         uint256 _accRewardPerShare = Rewards.getAccRewardPerShare(address(this).balance);
-        return s.accReward[account] + s.sharesOf[account] * _accRewardPerShare / 1e12 - s.rewardDebt[account];
+        return s.accReward[account] + s.shares[account] * _accRewardPerShare / 1e12 - s.rewardDebt[account];
+    }
+
+    function sharesSum() external view returns (uint256) {
+        return s.sharesSum;
+    }
+
+    function sharesOf(address account) external view returns (uint256) {
+        return s.shares[account];
     }
 
     function claimReward() external {
-        uint256 reward = s.claimableRewardOf[msg.sender];
+        uint256 reward = s.claimableReward[msg.sender];
         if (reward == 0) revert NoClaimableReward();
 
-        s.claimableRewardOf[msg.sender] = 0;
+        s.claimableReward[msg.sender] = 0;
 
         TransferLib.transferETH(msg.sender, reward, address(0));
 

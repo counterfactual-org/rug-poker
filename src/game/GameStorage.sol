@@ -15,14 +15,17 @@ struct GameStorage {
     // rewards
     uint256 reserve;
     uint256 accRewardPerShare;
-    mapping(address account => uint256) claimableRewardOf;
+    mapping(address account => uint256) claimableReward;
     mapping(address account => uint256) accReward;
     uint256 sharesSum;
-    mapping(address account => uint256) sharesOf;
+    mapping(address account => uint256) shares;
     mapping(address account => uint256) rewardDebt;
+    // players
+    mapping(address account => Player) players;
+    mapping(address account => uint256) incomingAttackId;
+    mapping(address account => uint256[]) outgoingAttackIds;
     // cards
-    mapping(address account => Player) playerOf;
-    mapping(uint256 tokenId => Card) cardOf;
+    mapping(uint256 tokenId => Card) cards;
     // attacks
     uint256 lastAttackId;
     mapping(uint256 attackId => Attack_) attacks;
@@ -30,8 +33,6 @@ struct GameStorage {
     mapping(uint256 attackId => uint256[HOLE_CARDS]) attackingTokenIds;
     mapping(uint256 attackId => uint256[HOLE_CARDS]) defendingTokenIds;
     mapping(uint256 attackId => uint8[]) defendingJokerCards;
-    mapping(address account => uint256) incomingAttackId;
-    mapping(address account => uint256[]) outgoingAttackIds;
     // attack resolver
     mapping(uint256 randomizerId => uint256 attackId) pendingRandomizerRequests;
 }

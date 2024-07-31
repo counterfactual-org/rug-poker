@@ -4,7 +4,6 @@ pragma solidity ^0.8.24;
 import { GameStorage } from "../GameStorage.sol";
 
 library Rewards {
-    event AdjustShares(address indexed account, uint256 sharesSum, uint256 shares);
     event Checkpoint(uint256 accRewardPerShare, uint256 reserve);
 
     function gameStorage() internal pure returns (GameStorage storage s) {
@@ -26,30 +25,6 @@ library Rewards {
         }
     }
 
-    function incrementShares(address account, uint256 shares) internal {
-        GameStorage storage s = gameStorage();
-
-        uint256 sharesSum = s.sharesSum + shares;
-        uint256 _shares = s.sharesOf[account] + shares;
-        s.sharesSum = sharesSum;
-        s.sharesOf[account] = _shares;
-        s.rewardDebt[account] = _shares * s.accRewardPerShare / 1e12;
-
-        emit AdjustShares(account, sharesSum, _shares);
-    }
-
-    function decrementShares(address account, uint256 shares) internal {
-        GameStorage storage s = gameStorage();
-
-        uint256 sharesSum = s.sharesSum - shares;
-        uint256 _shares = s.sharesOf[account] - shares;
-        s.sharesSum = sharesSum;
-        s.sharesOf[account] = _shares;
-        s.rewardDebt[account] = _shares * s.accRewardPerShare / 1e12;
-
-        emit AdjustShares(account, sharesSum, _shares);
-    }
-
     function moveBooty(address attacker, address defender, uint8 bootyPercentage) internal {
         GameStorage storage s = gameStorage();
 
@@ -64,10 +39,10 @@ library Rewards {
         GameStorage storage s = gameStorage();
 
         uint256 acc = s.accReward[owner];
-        uint256 reward = acc * shares / s.sharesOf[owner];
+        uint256 reward = acc * shares / s.shares[owner];
 
         s.accReward[owner] = acc - reward;
-        s.claimableRewardOf[owner] += reward;
+        s.claimableReward[owner] += reward;
     }
 
     function checkpoint() internal {

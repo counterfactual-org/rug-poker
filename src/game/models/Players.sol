@@ -11,9 +11,14 @@ import { INFTMinter } from "src/interfaces/INFTMinter.sol";
 library Players {
     using Cards for Card;
 
+    event AdjustShares(address indexed account, uint256 sharesSum, uint256 shares);
+    event UpdateIncomingAttack(address indexed account, uint256 attackId);
+    event AddOutgoingAttack(address indexed account, uint256 attackId);
     event CheckpointPlayer(address indexed account);
 
     error InsufficientFee();
+    error AlreadyUnderAttack();
+    error AttackingMax();
 
     function gameStorage() internal pure returns (GameStorage storage s) {
         assembly {
@@ -22,7 +27,7 @@ library Players {
     }
 
     function get(address account) internal view returns (Player storage self) {
-        return gameStorage().playerOf[account];
+        return gameStorage().players[account];
     }
 
     function init(address account) internal returns (Player storage self) {
@@ -43,12 +48,26 @@ library Players {
         self.lastDefendedAt = uint64(block.timestamp);
     }
 
-    function deductFee(Player storage self, uint8 bootyTier) internal returns (uint256 fee) {
+    function updateIncomingAttack(Player storage self, uint256 attackId) internal {
         GameStorage storage s = gameStorage();
-        uint256 acc = s.accReward[self.account];
-        fee = Configs.latest().attackFees[bootyTier];
-        if (acc < fee) revert InsufficientFee();
-        s.accReward[self.account] = acc - fee;
+
+        address account = self.account;
+        if (s.incomingAttackId[account] > 0) revert AlreadyUnderAttack();
+
+        s.incomingAttackId[account] = attackId;
+
+        emit UpdateIncomingAttack(account, attackId);
+    }
+
+    function addOutgoingAttack(Player storage self, uint256 attackId) internal {
+        GameStorage storage s = gameStorage();
+
+        address account = self.account;
+        if (s.outgoingAttackIds[account].length >= Configs.latest().maxAttacks) revert AttackingMax();
+
+        s.outgoingAttackIds[account].push(attackId);
+
+        emit AddOutgoingAttack(account, attackId);
     }
 
     function increaseFreeMintingIfHasNotPlayed(Player storage self) internal {
@@ -76,13 +95,47 @@ library Players {
         self.cards -= 1;
     }
 
+    function incrementShares(Player storage self, uint256 shares) internal {
+        GameStorage storage s = gameStorage();
+
+        address account = self.account;
+        uint256 sharesSum = s.sharesSum + shares;
+        uint256 _shares = s.shares[account] + shares;
+        s.sharesSum = sharesSum;
+        s.shares[account] = _shares;
+        s.rewardDebt[account] = _shares * s.accRewardPerShare / 1e12;
+
+        emit AdjustShares(account, sharesSum, _shares);
+    }
+
+    function decrementShares(Player storage self, uint256 shares) internal {
+        GameStorage storage s = gameStorage();
+
+        address account = self.account;
+        uint256 sharesSum = s.sharesSum - shares;
+        uint256 _shares = s.shares[account] - shares;
+        s.sharesSum = sharesSum;
+        s.shares[account] = _shares;
+        s.rewardDebt[account] = _shares * s.accRewardPerShare / 1e12;
+
+        emit AdjustShares(account, sharesSum, _shares);
+    }
+
+    function deductFee(Player storage self, uint8 bootyTier) internal returns (uint256 fee) {
+        GameStorage storage s = gameStorage();
+        uint256 acc = s.accReward[self.account];
+        fee = Configs.latest().attackFees[bootyTier];
+        if (acc < fee) revert InsufficientFee();
+        s.accReward[self.account] = acc - fee;
+    }
+
     function checkpoint(Player storage self) internal {
         Rewards.checkpoint();
 
         GameStorage storage s = gameStorage();
 
         address account = self.account;
-        uint256 shares = s.sharesOf[account];
+        uint256 shares = s.shares[account];
         if (shares > 0) {
             s.accReward[account] += shares * s.accRewardPerShare / 1e12 - s.rewardDebt[account];
         }

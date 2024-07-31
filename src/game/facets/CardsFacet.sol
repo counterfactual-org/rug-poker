@@ -49,9 +49,11 @@ contract CardsFacet is BaseFacet {
     }
 
     function addCard(uint256 tokenId) external {
-        Player storage player = Players.init(msg.sender);
+        Player storage player = Players.get(msg.sender);
+        if (!player.initialized()) revert NotPlayer();
         if (player.cards >= Configs.latest().maxCards) revert MaxCardsStaked();
 
+        player.checkpoint();
         player.increaseFreeMintingIfHasNotPlayed();
 
         Card storage card = Cards.get(tokenId);
@@ -59,11 +61,10 @@ contract CardsFacet is BaseFacet {
             card = Cards.init(tokenId, msg.sender);
         }
 
-        player.checkpoint();
-
         Configs.erc721().transferFrom(msg.sender, address(this), tokenId);
 
         player.incrementCards();
+        player.incrementShares(card.shares());
         player.updateLastDefendedAt();
 
         emit AddCard(msg.sender, tokenId);
@@ -79,8 +80,14 @@ contract CardsFacet is BaseFacet {
         if (!card.wornOut() && card.durationElapsed()) revert DurationNotElapsed();
 
         player.checkpoint();
+
         card.remove();
+
         player.decrementCards();
+        // if it's wornOut, decrementShares was already called in card.spend() so we don't
+        if (!card.wornOut()) {
+            player.decrementShares(card.shares());
+        }
 
         Configs.erc721().transferFrom(address(this), msg.sender, tokenId);
 
@@ -97,8 +104,11 @@ contract CardsFacet is BaseFacet {
         if (card.durability == 0) revert WornOut();
 
         player.checkpoint();
+
         card.remove();
+
         player.decrementCards();
+        player.decrementShares(card.shares());
 
         Configs.nft().burn(tokenId);
 

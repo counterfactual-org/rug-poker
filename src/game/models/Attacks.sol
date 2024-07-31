@@ -32,9 +32,6 @@ library Attacks {
     error InvalidNumber();
     error DuplicateTokenIds();
     error NotPlayer();
-    error Immune();
-    error AlreadyUnderAttack();
-    error AttackingMax();
     error JokerNotAllowed();
     error AttackOver();
     error AlreadyDefended();
@@ -84,21 +81,6 @@ library Attacks {
 
     function markResolving(Attack_ storage self) internal {
         self.resolving = true;
-    }
-
-    function start(Attack_ storage self) internal {
-        GameStorage storage s = gameStorage();
-
-        (uint256 id, address attacker, address defender) = (self.id, self.attacker, self.defender);
-
-        Player storage d = Players.get(defender);
-        if (!d.initialized()) revert NotPlayer();
-        if (d.isImmune()) revert Immune();
-        if (s.incomingAttackId[defender] > 0) revert AlreadyUnderAttack();
-        if (s.outgoingAttackIds[attacker].length >= Configs.latest().maxAttacks) revert AttackingMax();
-
-        s.incomingAttackId[defender] = id;
-        s.outgoingAttackIds[attacker].push(id);
     }
 
     function defend(
@@ -160,11 +142,11 @@ library Attacks {
         Players.get(defender).updateLastDefendedAt();
 
         for (uint256 i; i < s.attackingTokenIds[id].length; ++i) {
-            s.cardOf[s.attackingTokenIds[id][i]].spend();
+            Cards.get(s.attackingTokenIds[id][i]).spend();
         }
 
         for (uint256 i; i < s.defendingTokenIds[id].length; ++i) {
-            s.cardOf[s.defendingTokenIds[id][i]].spend();
+            Cards.get(s.defendingTokenIds[id][i]).spend();
         }
 
         self.resolving = false;
@@ -200,8 +182,8 @@ library Attacks {
                 }
             }
 
-            Rewards.decrementShares(attacker, sharesDelta);
-            Rewards.incrementShares(defender, sharesDelta);
+            Players.get(attacker).decrementShares(sharesDelta);
+            Players.get(defender).incrementShares(sharesDelta);
         }
         self.result = result;
     }

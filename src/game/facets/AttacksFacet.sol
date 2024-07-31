@@ -29,6 +29,7 @@ contract AttcksFacet is BaseFacet, IRandomizerCallback {
 
     error Forbidden();
     error NotPlayer();
+    error Immune();
     error InvalidNumberOfCards();
     error InvalidNumberOfJokers();
     error InvalidJokerCard();
@@ -64,6 +65,10 @@ contract AttcksFacet is BaseFacet, IRandomizerCallback {
         Player storage player = Players.get(msg.sender);
         if (!player.initialized()) revert NotPlayer();
 
+        Player storage d = Players.get(defender);
+        if (!d.initialized()) revert NotPlayer();
+        if (d.isImmune()) revert Immune();
+
         player.checkpoint();
         Players.get(defender).checkpoint();
 
@@ -71,7 +76,8 @@ contract AttcksFacet is BaseFacet, IRandomizerCallback {
         TransferLib.transferETH(s.treasury, fee, address(0));
 
         Attack_ storage a = Attacks.init(msg.sender, defender, bootyTier, tokenIds);
-        a.start();
+        player.addOutgoingAttack(a.id);
+        d.updateIncomingAttack(a.id);
 
         emit Attack(a.id, msg.sender, defender, tokenIds);
     }
