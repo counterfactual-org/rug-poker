@@ -21,6 +21,7 @@ struct GameStorage {
     mapping(address account => uint256) shares;
     mapping(address account => uint256) rewardDebt;
     // players
+    mapping(bytes32 username => address) usernames;
     mapping(address account => Player) players;
     mapping(address account => uint256) incomingAttackId;
     mapping(address account => uint256[]) outgoingAttackIds;
@@ -55,6 +56,7 @@ struct Player {
     address account;
     bool hasPlayed;
     uint64 lastDefendedAt;
+    bytes32 username;
     uint256 cards;
 }
 

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import { Card, GameStorage, Player } from "../GameStorage.sol";
+import { isValidUsername } from "../utils/StringUtils.sol";
 import { Cards } from "./Cards.sol";
 import { Configs } from "./Configs.sol";
 import { Rewards } from "./Rewards.sol";
@@ -12,10 +13,13 @@ library Players {
     using Cards for Card;
 
     event AdjustShares(address indexed account, uint256 sharesSum, uint256 shares);
+    event UpdateUsername(address indexed account, bytes32 indexed username);
     event UpdateIncomingAttack(address indexed account, uint256 attackId);
     event AddOutgoingAttack(address indexed account, uint256 attackId);
     event CheckpointPlayer(address indexed account);
 
+    error InvalidUsername();
+    error DuplicateUsername();
     error InsufficientFee();
     error AlreadyUnderAttack();
     error AttackingMax();
@@ -30,9 +34,10 @@ library Players {
         return gameStorage().players[account];
     }
 
-    function init(address account) internal returns (Player storage self) {
+    function init(address account, bytes32 username) internal returns (Player storage self) {
         self = get(account);
         self.account = account;
+        updateUsername(self, username);
     }
 
     function initialized(Player storage self) internal view returns (bool) {
@@ -42,6 +47,18 @@ library Players {
     function isImmune(Player storage self) internal view returns (bool) {
         uint256 lastDefendedAt = self.lastDefendedAt;
         return lastDefendedAt > 0 && block.timestamp < lastDefendedAt + Configs.latest().immunePeriod;
+    }
+
+    function updateUsername(Player storage self, bytes32 username) internal {
+        GameStorage storage s = gameStorage();
+        if (!isValidUsername(username)) revert InvalidUsername();
+        if (s.usernames[username] != address(0)) revert DuplicateUsername();
+
+        address account = self.account;
+        s.usernames[username] = account;
+        self.username = username;
+
+        emit UpdateUsername(account, username);
     }
 
     function updateLastDefendedAt(Player storage self) internal {
