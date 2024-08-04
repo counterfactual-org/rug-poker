@@ -21,10 +21,6 @@ contract CardsFacet is BaseFacet {
     error DurationNotElapsed();
     error WornOut();
 
-    function getPlayer(address account) external view returns (Player memory) {
-        return Players.get(account);
-    }
-
     function getCard(uint256 tokenId) external view returns (Card memory) {
         return Cards.get(tokenId);
     }

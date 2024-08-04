@@ -7,7 +7,9 @@ import { BaseFacet } from "./BaseFacet.sol";
 contract PlayersFacet is BaseFacet {
     using Players for Player;
 
-    error AlreadyPlayer();
+    function getPlayer(address account) external view returns (Player memory) {
+        return Players.get(account);
+    }
 
     function updatePlayer(bytes32 username) external {
         Player storage player = Players.get(msg.sender);
