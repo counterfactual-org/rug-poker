@@ -21,5 +21,7 @@ uint8 constant SUIT_HEART = 1;
 uint8 constant SUIT_DIAMOND = 2;
 uint8 constant SUIT_CLUB = 3;
 
+uint8 constant MAX_LEVEL = 10;
+
 uint256 constant HOLE_CARDS = 5;
 uint256 constant COMMUNITY_CARDS = 2;

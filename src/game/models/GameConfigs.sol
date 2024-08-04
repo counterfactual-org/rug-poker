@@ -64,15 +64,13 @@ library GameConfigs {
         if (c.maxCards == 0) revert InvalidNumber();
         if (c.maxJokers == 0 || c.maxJokers > HOLE_CARDS) revert InvalidNumber();
         if (c.maxAttacks == 0) revert InvalidNumber();
+        if (c.minBootyPercentage >= c.maxBootyPercentage || c.maxBootyPercentage >= 100) {
+            revert InvalidBootyPercentages();
+        }
         if (c.maxBootyCards == 0 || c.maxBootyCards > HOLE_CARDS) revert InvalidNumber();
         if (c.minDurability == 0 || c.maxDurability <= c.minDurability) revert InvalidNumber();
         if (c.minDuration < 1 days) revert InvalidPeriod();
         if (c.attackPeriod < 1 hours) revert InvalidPeriod();
-        if (
-            c.bootyPercentages[0] >= c.bootyPercentages[1] || c.bootyPercentages[1] >= c.bootyPercentages[2]
-                || c.bootyPercentages[2] > 50
-        ) revert InvalidBootyPercentages();
-        if (c.attackFees[0] >= c.attackFees[1] || c.attackFees[1] >= c.attackFees[2]) revert InvalidAttackFees();
 
         GameStorage storage s = gameStorage();
         uint256 version = s.configVersion + 1;

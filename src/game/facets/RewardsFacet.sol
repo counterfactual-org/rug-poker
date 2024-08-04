@@ -35,6 +35,7 @@ contract RewardsFacet is BaseFacet {
         if (reward == 0) revert NoClaimableReward();
 
         s.claimableReward[msg.sender] = 0;
+        s.reserve -= reward;
 
         TransferLib.transferETH(msg.sender, reward, address(0));
 

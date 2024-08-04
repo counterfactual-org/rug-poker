@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {
+    HOLE_CARDS,
     RANK_ACE,
     RANK_EIGHT,
     RANK_FIVE,
@@ -17,19 +18,23 @@ import {
     RANK_THREE,
     RANK_TWO
 } from "../GameConstants.sol";
-import { Card, GameStorage } from "../GameStorage.sol";
+import { Card, GameStorage, Player, RandomizerRequest, RequestAction } from "../GameStorage.sol";
 import { GameConfig, GameConfigs } from "./GameConfigs.sol";
-import { Player, Players } from "./Players.sol";
+import { Players } from "./Players.sol";
+import { RandomizerRequests } from "./RandomizerRequests.sol";
 import { Rewards } from "./Rewards.sol";
 import { INFT } from "src/interfaces/INFT.sol";
 import { INFTMinter } from "src/interfaces/INFTMinter.sol";
 
 library Cards {
     using Players for Player;
+    using RandomizerRequests for RandomizerRequest;
 
     uint8 constant FIELD_DURABILITY = 0;
     uint8 constant FIELD_RANK = 1;
     uint8 constant FIELD_SUIT = 2;
+
+    event LevelUp(uint256 tokenId, uint8 level);
 
     error CardNotAdded(uint256 tokenId);
     error Underuse(uint256 tokenId);
@@ -40,6 +45,34 @@ library Cards {
         assembly {
             s.slot := 0
         }
+    }
+
+    function lowestLevel(uint256[HOLE_CARDS] memory ids) internal view returns (uint8 level) {
+        for (uint256 i; i < HOLE_CARDS; ++i) {
+            Card storage card = Cards.get(ids[i]);
+            if (i == 0 || card.level < level) {
+                level = card.level;
+            }
+        }
+    }
+
+    function highestLevel(uint256[HOLE_CARDS] memory ids) internal view returns (uint8 level) {
+        for (uint256 i; i < HOLE_CARDS; ++i) {
+            Card storage card = Cards.get(ids[i]);
+            if (i == 0 || card.level > level) {
+                level = card.level;
+            }
+        }
+    }
+
+    function gainXPBatch(uint256[HOLE_CARDS] memory ids, uint32 xp) internal {
+        for (uint256 i; i < HOLE_CARDS; ++i) {
+            gainXP(Cards.get(ids[i]), xp);
+        }
+    }
+
+    function maxXP(uint8 level) internal pure returns (uint32 xp) {
+        return 1000 * level * level;
     }
 
     function get(uint256 tokenId) internal view returns (Card storage self) {
@@ -53,11 +86,14 @@ library Cards {
         self.durability = deriveDurability(tokenId);
         self.rank = deriveRank(tokenId);
         self.suit = deriveSuit(tokenId);
+        self.level = 1;
         self.lastAddedAt = uint64(block.timestamp);
+
+        emit LevelUp(tokenId, 1);
     }
 
     function initialized(Card storage self) internal view returns (bool) {
-        return self.lastAddedAt > 0;
+        return self.level > 0;
     }
 
     function added(Card storage self) internal view returns (bool) {
@@ -111,7 +147,7 @@ library Cards {
     }
 
     function shares(Card storage self) internal view returns (uint256) {
-        return self.rank + 2;
+        return self.level;
     }
 
     function assertAvailable(Card storage self, address owner) internal view {
@@ -149,6 +185,24 @@ library Cards {
 
         if (durability == 1) {
             Players.get(self.owner).decrementShares(shares(self));
+        }
+    }
+
+    function gainXP(Card storage self, uint32 delta) internal {
+        while (true) {
+            uint32 xp = self.xp;
+            uint32 max = maxXP(self.level);
+            if (xp + delta >= max) {
+                delta -= (max - xp);
+                uint8 level = self.level + 1;
+                self.level = level;
+                self.xp = 0;
+
+                emit LevelUp(self.tokenId, level);
+            } else {
+                self.xp += delta;
+                return;
+            }
         }
     }
 }

@@ -8,19 +8,21 @@ import { GameConfigs } from "./GameConfigs.sol";
 import { Rewards } from "./Rewards.sol";
 import { INFT } from "src/interfaces/INFT.sol";
 import { INFTMinter } from "src/interfaces/INFTMinter.sol";
+import { ArrayLib } from "src/libraries/ArrayLib.sol";
 
 library Players {
+    using ArrayLib for uint256[];
     using Cards for Card;
 
     event AdjustShares(address indexed account, uint256 sharesSum, uint256 shares);
     event UpdateUsername(address indexed account, bytes32 indexed username);
     event UpdateIncomingAttack(address indexed account, uint256 attackId);
     event AddOutgoingAttack(address indexed account, uint256 attackId);
+    event RemoveOutgoingAttack(address indexed account, uint256 attackId);
     event CheckpointPlayer(address indexed account);
 
     error InvalidUsername();
     error DuplicateUsername();
-    error InsufficientFee();
     error AlreadyUnderAttack();
     error AttackingMax();
 
@@ -69,7 +71,7 @@ library Players {
         GameStorage storage s = gameStorage();
 
         address account = self.account;
-        if (s.incomingAttackId[account] > 0) revert AlreadyUnderAttack();
+        if (attackId > 0 && s.incomingAttackId[account] > 0) revert AlreadyUnderAttack();
 
         s.incomingAttackId[account] = attackId;
 
@@ -85,6 +87,15 @@ library Players {
         s.outgoingAttackIds[account].push(attackId);
 
         emit AddOutgoingAttack(account, attackId);
+    }
+
+    function removeOutgoingAttack(Player storage self, uint256 attackId) internal {
+        GameStorage storage s = gameStorage();
+
+        address account = self.account;
+        s.outgoingAttackIds[account].remove(attackId);
+
+        emit RemoveOutgoingAttack(account, attackId);
     }
 
     function increaseFreeMintingIfHasNotPlayed(Player storage self) internal {
@@ -136,14 +147,6 @@ library Players {
         s.rewardDebt[account] = _shares * s.accRewardPerShare / 1e12;
 
         emit AdjustShares(account, sharesSum, _shares);
-    }
-
-    function deductFee(Player storage self, uint8 bootyTier) internal returns (uint256 fee) {
-        GameStorage storage s = gameStorage();
-        uint256 acc = s.accReward[self.account];
-        fee = GameConfigs.latest().attackFees[bootyTier];
-        if (acc < fee) revert InsufficientFee();
-        s.accReward[self.account] = acc - fee;
     }
 
     function checkpoint(Player storage self) internal {

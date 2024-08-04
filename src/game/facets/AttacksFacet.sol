@@ -4,20 +4,13 @@ pragma solidity ^0.8.24;
 import { HOLE_CARDS } from "../GameConstants.sol";
 import { Attack_, Attacks } from "../models/Attacks.sol";
 import { Card, Cards } from "../models/Cards.sol";
-import { GameConfigs } from "../models/GameConfigs.sol";
-
+import { GameConfig, GameConfigs } from "../models/GameConfigs.sol";
 import { Player, Players } from "../models/Players.sol";
-import { Randomizers } from "../models/Randomizers.sol";
+import { RandomizerRequests, RequestAction } from "../models/RandomizerRequests.sol";
 import { Rewards } from "../models/Rewards.sol";
 import { BaseFacet } from "./BaseFacet.sol";
 
-import { IERC721 } from "forge-std/interfaces/IERC721.sol";
-import { INFT } from "src/interfaces/INFT.sol";
-import { INFTMinter } from "src/interfaces/INFTMinter.sol";
-import { IRandomizerCallback } from "src/interfaces/IRandomizerCallback.sol";
-import { TransferLib } from "src/libraries/TransferLib.sol";
-
-contract AttcksFacet is BaseFacet, IRandomizerCallback {
+contract AttcksFacet is BaseFacet {
     using Players for Player;
     using Cards for Card;
     using Attacks for Attack_;
@@ -27,7 +20,6 @@ contract AttcksFacet is BaseFacet, IRandomizerCallback {
     event ResolveAttack(uint256 indexed attackId, uint256 indexed randomizerId);
     event FinalizeAttack(uint256 indexed id);
 
-    error Forbidden();
     error NotPlayer();
     error Immune();
     error InvalidNumberOfCards();
@@ -57,11 +49,7 @@ contract AttcksFacet is BaseFacet, IRandomizerCallback {
         return s.outgoingAttackIds[account];
     }
 
-    function pendingRandomizerRequest(uint256 id) external view returns (uint256 attackId) {
-        return Randomizers.pendingRequest(id);
-    }
-
-    function attack(address defender, uint8 bootyTier, uint256[HOLE_CARDS] memory tokenIds) external {
+    function attack(address defender, uint256[HOLE_CARDS] memory tokenIds) external {
         Player storage player = Players.get(msg.sender);
         if (!player.initialized()) revert NotPlayer();
 
@@ -70,12 +58,9 @@ contract AttcksFacet is BaseFacet, IRandomizerCallback {
         if (d.isImmune()) revert Immune();
 
         player.checkpoint();
-        Players.get(defender).checkpoint();
+        d.checkpoint();
 
-        uint256 fee = player.deductFee(bootyTier);
-        TransferLib.transferETH(s.treasury, fee, address(0));
-
-        Attack_ storage a = Attacks.init(msg.sender, defender, bootyTier, tokenIds);
+        Attack_ storage a = Attacks.init(msg.sender, defender, tokenIds);
         player.addOutgoingAttack(a.id);
         d.updateIncomingAttack(a.id);
 
@@ -109,31 +94,18 @@ contract AttcksFacet is BaseFacet, IRandomizerCallback {
         if (s.defendingTokenIds[attackId].length > 0) {
             a.markResolving();
 
-            uint256 randomizerId = Randomizers.request(address(this), attackId);
+            uint256 randomizerId = RandomizerRequests.request(RequestAction.Attack, attackId);
 
             emit ResolveAttack(attackId, randomizerId);
         } else {
-            if (block.timestamp <= a.startedAt + GameConfigs.latest().attackPeriod) revert AttackOngoing();
+            GameConfig memory c = GameConfigs.latest();
+            if (block.timestamp <= a.startedAt + c.attackPeriod) revert AttackOngoing();
 
-            Rewards.moveBooty(a.attacker, a.defender, a.bootyPercentage);
+            Rewards.moveBooty(a.attacker, a.defender, c.maxBootyPercentage);
 
             a.finalize();
 
             emit FinalizeAttack(attackId);
         }
-    }
-
-    function randomizerCallback(uint256 randomizerId, bytes32 value) external {
-        if (msg.sender != s.randomizer) revert Forbidden();
-
-        uint256 attackId = Randomizers.getPendingRequest(randomizerId);
-
-        Attack_ storage a = Attacks.get(attackId);
-
-        Players.get(a.attacker).checkpoint();
-        Players.get(a.defender).checkpoint();
-
-        a.deriveAttackResult(value);
-        a.finalize();
     }
 }
