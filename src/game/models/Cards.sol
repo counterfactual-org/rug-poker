@@ -189,6 +189,7 @@ library Cards {
     }
 
     function gainXP(Card storage self, uint32 delta) internal {
+        uint256 up;
         while (true) {
             uint32 xp = self.xp;
             uint32 max = maxXP(self.level);
@@ -197,12 +198,19 @@ library Cards {
                 uint8 level = self.level + 1;
                 self.level = level;
                 self.xp = 0;
+                up += 1;
 
                 emit LevelUp(self.tokenId, level);
             } else {
                 self.xp += delta;
-                return;
+                break;
             }
+        }
+
+        if (up > 0) {
+            Player storage player = Players.get(self.owner);
+            player.checkpoint();
+            player.incrementShares(up);
         }
     }
 }
