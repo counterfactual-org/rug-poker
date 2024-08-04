@@ -15,7 +15,6 @@ struct GameStorage {
     // rewards
     uint256 reserve;
     uint256 accRewardPerShare;
-    mapping(address account => uint256) claimableReward;
     mapping(address account => uint256) accReward;
     uint256 sharesSum;
     mapping(address account => uint256) shares;

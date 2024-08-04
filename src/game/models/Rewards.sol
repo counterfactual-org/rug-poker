@@ -2,9 +2,13 @@
 pragma solidity ^0.8.24;
 
 import { GameStorage } from "../GameStorage.sol";
+import { TransferLib } from "src/libraries/TransferLib.sol";
 
 library Rewards {
+    event ClaimReward(address indexed account, uint256 amount);
     event Checkpoint(uint256 accRewardPerShare, uint256 reserve);
+
+    error ExceedingShares();
 
     function gameStorage() internal pure returns (GameStorage storage s) {
         assembly {
@@ -38,11 +42,18 @@ library Rewards {
     function claim(address owner, uint256 shares) internal {
         GameStorage storage s = gameStorage();
 
+        uint256 ownerShares = s.shares[owner];
+        if (shares > ownerShares) revert ExceedingShares();
+
         uint256 acc = s.accReward[owner];
-        uint256 reward = acc * shares / s.shares[owner];
+        uint256 reward = acc * shares / ownerShares;
 
         s.accReward[owner] = acc - reward;
-        s.claimableReward[owner] += reward;
+        s.reserve -= reward;
+
+        TransferLib.transferETH(owner, reward, address(0));
+
+        emit ClaimReward(owner, reward);
     }
 
     function checkpoint() internal {
