@@ -12,6 +12,7 @@ struct GameStorage {
     address treasury;
     uint256 configVersion;
     mapping(uint256 version => GameConfig) configs;
+    mapping(uint256 itemKind => uint256) itemPoints;
     // rewards
     uint256 reserve;
     uint256 accRewardPerShare;
@@ -24,6 +25,7 @@ struct GameStorage {
     mapping(address account => Player) players;
     mapping(address account => uint256) incomingAttackId;
     mapping(address account => uint256[]) outgoingAttackIds;
+    mapping(address account => mapping(uint256 itemKind => uint256)) items;
     // cards
     mapping(uint256 tokenId => Card) cards;
     // attacks
@@ -57,6 +59,7 @@ struct Player {
     uint64 lastDefendedAt;
     bytes32 username;
     uint256 cards;
+    uint256 points;
 }
 
 struct Card {

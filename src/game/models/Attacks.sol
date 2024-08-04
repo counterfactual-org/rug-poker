@@ -143,12 +143,16 @@ library Attacks {
         AttackResult result;
         if (evalAttack < evalDefense) {
             address attacker = self.attacker;
-            Cards.gainXPBatch(attackingTokenIds, uint32(evalDefense - evalAttack));
+            uint256 points = evalDefense - evalAttack;
+            Players.get(attacker).incrementPoints(points);
+            Cards.gainXPBatch(attackingTokenIds, uint32(points));
             Rewards.moveBooty(attacker, self.defender, _bootyPercentage(self.level, defendingTokenIds));
             result = AttackResult.Success;
         } else if (evalAttack > evalDefense) {
             address defender = self.defender;
-            Cards.gainXPBatch(defendingTokenIds, uint32(evalAttack - evalDefense));
+            uint256 points = evalAttack - evalDefense;
+            Players.get(defender).incrementPoints(points);
+            Cards.gainXPBatch(defendingTokenIds, uint32(points));
             _moveBootyCards(id, self.attacker, defender, random);
             result = AttackResult.Fail;
         } else {

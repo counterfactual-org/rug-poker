@@ -14,6 +14,9 @@ library Players {
     using ArrayLib for uint256[];
     using Cards for Card;
 
+    event AdjustCards(address indexed account, uint256 cards);
+    event AdjustPoints(address indexed account, uint256 points);
+    event AdjustItems(address indexed account, uint256 itemKind, uint256 items);
     event AdjustShares(address indexed account, uint256 sharesSum, uint256 shares);
     event UpdateUsername(address indexed account, bytes32 indexed username);
     event UpdateIncomingAttack(address indexed account, uint256 attackId);
@@ -21,15 +24,25 @@ library Players {
     event RemoveOutgoingAttack(address indexed account, uint256 attackId);
     event CheckpointPlayer(address indexed account);
 
+    error NotPlayer();
     error InvalidUsername();
     error DuplicateUsername();
     error AlreadyUnderAttack();
     error AttackingMax();
+    error InsufficientCards();
+    error InsufficientPoints();
+    error InsufficientItems();
+    error InsufficientShares();
 
     function gameStorage() internal pure returns (GameStorage storage s) {
         assembly {
             s.slot := 0
         }
+    }
+
+    function getOrRevert(address account) internal view returns (Player storage self) {
+        self = get(account);
+        if (!initialized(self)) revert NotPlayer();
     }
 
     function get(address account) internal view returns (Player storage self) {
@@ -116,11 +129,56 @@ library Players {
     }
 
     function incrementCards(Player storage self) internal {
-        self.cards += 1;
+        uint256 cards = self.cards + 1;
+        self.cards = cards;
+
+        emit AdjustCards(self.account, cards);
     }
 
     function decrementCards(Player storage self) internal {
-        self.cards -= 1;
+        if (self.cards < 1) revert InsufficientCards();
+
+        uint256 cards = self.cards - 1;
+        self.cards = cards;
+
+        emit AdjustCards(self.account, cards);
+    }
+
+    function incrementPoints(Player storage self, uint256 points) internal {
+        uint256 newPoints = self.points + points;
+        self.points = newPoints;
+
+        emit AdjustPoints(self.account, newPoints);
+    }
+
+    function decrementPoints(Player storage self, uint256 points) internal {
+        if (points > self.points) revert InsufficientPoints();
+
+        uint256 newPoints = self.points - points;
+        self.points = newPoints;
+
+        emit AdjustPoints(self.account, newPoints);
+    }
+
+    function incrementItems(Player storage self, uint256 itemKind, uint256 items) internal {
+        GameStorage storage s = gameStorage();
+
+        address account = self.account;
+        uint256 newItems = s.items[account][itemKind] + items;
+        s.items[account][itemKind] = newItems;
+
+        emit AdjustItems(account, itemKind, newItems);
+    }
+
+    function decrementItems(Player storage self, uint256 itemKind, uint256 items) internal {
+        GameStorage storage s = gameStorage();
+        address account = self.account;
+        if (items > s.items[account][itemKind]) revert InsufficientItems();
+
+        uint256 newItems = s.items[account][itemKind] - items;
+        s.items[account][itemKind] = newItems;
+
+        emit AdjustItems(account, itemKind, newItems);
     }
 
     function incrementShares(Player storage self, uint256 shares) internal {
@@ -138,8 +196,9 @@ library Players {
 
     function decrementShares(Player storage self, uint256 shares) internal {
         GameStorage storage s = gameStorage();
-
         address account = self.account;
+        if (shares > s.shares[account]) revert InsufficientShares();
+
         uint256 sharesSum = s.sharesSum - shares;
         uint256 _shares = s.shares[account] - shares;
         s.sharesSum = sharesSum;

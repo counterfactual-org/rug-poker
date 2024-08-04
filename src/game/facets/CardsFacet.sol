@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.24;
 
+import { ITEM_KIND_REPAIR } from "../GameConstants.sol";
 import { Card, Cards } from "../models/Cards.sol";
 import { GameConfigs } from "../models/GameConfigs.sol";
 import { Player, Players } from "../models/Players.sol";
@@ -13,13 +14,14 @@ contract CardsFacet is BaseFacet {
     event AddCard(address indexed account, uint256 indexed tokenId);
     event RemoveCard(address indexed account, uint256 indexed tokenId);
     event BurnCard(address indexed account, uint256 indexed tokenId);
+    event RepairCard(address indexed account, uint256 indexed tokenId, uint8 durability);
 
-    error NotPlayer();
     error MaxCardsStaked();
     error Forbidden();
     error Underuse();
     error DurationNotElapsed();
     error WornOut();
+    error UnableToRepair();
 
     function getCard(uint256 tokenId) external view returns (Card memory) {
         return Cards.get(tokenId);
@@ -45,8 +47,7 @@ contract CardsFacet is BaseFacet {
     }
 
     function addCard(uint256 tokenId) external {
-        Player storage player = Players.get(msg.sender);
-        if (!player.initialized()) revert NotPlayer();
+        Player storage player = Players.getOrRevert(msg.sender);
         if (player.cards >= GameConfigs.latest().maxCards) revert MaxCardsStaked();
 
         player.checkpoint();
@@ -67,8 +68,7 @@ contract CardsFacet is BaseFacet {
     }
 
     function removeCard(uint256 tokenId) external {
-        Player storage player = Players.get(msg.sender);
-        if (!player.initialized()) revert NotPlayer();
+        Player storage player = Players.getOrRevert(msg.sender);
 
         Card storage card = Cards.get(tokenId);
         if (card.owner != msg.sender) revert Forbidden();
@@ -91,8 +91,7 @@ contract CardsFacet is BaseFacet {
     }
 
     function burnCard(uint256 tokenId) external {
-        Player storage player = Players.get(msg.sender);
-        if (!player.initialized()) revert NotPlayer();
+        Player storage player = Players.getOrRevert(msg.sender);
 
         Card storage card = Cards.get(tokenId);
         if (card.owner != msg.sender) revert Forbidden();
@@ -109,5 +108,20 @@ contract CardsFacet is BaseFacet {
         GameConfigs.nft().burn(tokenId);
 
         emit BurnCard(msg.sender, tokenId);
+    }
+
+    function repairCard(uint256 tokenId) external {
+        Player storage player = Players.getOrRevert(msg.sender);
+
+        Card storage card = Cards.get(tokenId);
+        if (card.owner != msg.sender) revert Forbidden();
+        if (card.underuse) revert Underuse();
+        if (card.durability >= GameConfigs.latest().maxDurability) revert UnableToRepair();
+
+        player.decrementItems(ITEM_KIND_REPAIR, 1);
+        uint8 durability = card.durability + 1;
+        card.durability = durability;
+
+        emit RepairCard(msg.sender, tokenId, durability);
     }
 }
