@@ -22,6 +22,7 @@ contract AttcksFacet is BaseFacet {
 
     error NotPlayer();
     error Immune();
+    error Forbidden();
     error InvalidNumberOfCards();
     error InvalidNumberOfJokers();
     error InvalidJokerCard();
@@ -74,10 +75,12 @@ contract AttcksFacet is BaseFacet {
         uint8[] memory jokerCards
     ) external {
         Attack_ storage a = Attacks.get(attackId);
-        a.defend(tokenIds, jokerTokenIds, jokerCards, msg.sender);
+        if (a.defender != msg.sender) revert Forbidden();
 
         Players.get(a.attacker).checkpoint();
         Players.get(a.defender).checkpoint();
+
+        a.defend(tokenIds, jokerTokenIds, jokerCards);
 
         emit Defend(attackId, tokenIds, jokerTokenIds);
     }

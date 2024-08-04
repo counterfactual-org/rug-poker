@@ -25,7 +25,6 @@ library Attacks {
         AttackResult indexed result
     );
 
-    error Forbidden();
     error InvalidAddress();
     error InvalidNumber();
     error DuplicateTokenIds();
@@ -83,14 +82,12 @@ library Attacks {
         Attack_ storage self,
         uint256[] memory tokenIds,
         uint256[] memory jokerTokenIds,
-        uint8[] memory jokerCards,
-        address sender
+        uint8[] memory jokerCards
     ) internal {
         GameStorage storage s = gameStorage();
 
-        (uint256 attackId, address attacker, address defender) = (self.id, self.attacker, self.defender);
+        (uint256 attackId, address defender) = (self.id, self.defender);
         GameConfig memory c = GameConfigs.latest();
-        if (sender != defender) revert Forbidden();
         if (self.resolving) revert AttackResolving();
         if (self.finalized) revert AttackFinalized();
         if (self.startedAt + c.attackPeriod < block.timestamp) revert AttackOver();
@@ -100,16 +97,24 @@ library Attacks {
         if ((tokenIds.length + jokersLength) != HOLE_CARDS) revert InvalidNumberOfCards();
         if (jokersLength > c.maxJokers || jokersLength != jokerCards.length) revert InvalidNumberOfJokers();
 
-        s.defendingTokenIds[attackId] = _populateDefendingTokenIds(tokenIds, jokerTokenIds, jokerCards, attacker);
+        uint256[HOLE_CARDS] memory ids = _populateDefendingTokenIds(tokenIds, jokerTokenIds, jokerCards);
+        if (ArrayLib.hasDuplicate(ids)) revert DuplicateTokenIds();
+
+        for (uint256 i; i < HOLE_CARDS; ++i) {
+            Card storage card = Cards.get(ids[i]);
+            card.assertAvailable(defender);
+            card.markUnderuse();
+        }
+
+        s.defendingTokenIds[attackId] = ids;
         s.defendingJokerCards[attackId] = jokerCards;
     }
 
     function _populateDefendingTokenIds(
         uint256[] memory tokenIds,
         uint256[] memory jokerTokenIds,
-        uint8[] memory jokerCards,
-        address attacker
-    ) private returns (uint256[HOLE_CARDS] memory ids) {
+        uint8[] memory jokerCards
+    ) private view returns (uint256[HOLE_CARDS] memory ids) {
         uint256 jokersLength = jokerTokenIds.length;
         for (uint256 i; i < HOLE_CARDS; ++i) {
             uint256 tokenId;
@@ -122,12 +127,7 @@ library Attacks {
                 if (Cards.get(tokenId).isJoker()) revert JokerNotAllowed();
             }
             ids[i] = tokenId;
-
-            Card storage card = Cards.get(ids[i]);
-            card.assertAvailable(attacker);
-            card.markUnderuse();
         }
-        if (ArrayLib.hasDuplicate(ids)) revert DuplicateTokenIds();
     }
 
     function determineAttackResult(Attack_ storage self, bytes32 seed) internal {
