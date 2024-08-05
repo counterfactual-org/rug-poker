@@ -12,7 +12,7 @@ struct GameStorage {
     address treasury;
     uint256 configVersion;
     mapping(uint256 version => GameConfig) configs;
-    mapping(uint256 itemKind => uint256) itemPoints;
+    mapping(uint256 itemKind => ItemPrice) itemPrices;
     // rewards
     uint256 reserve;
     uint256 accRewardPerShare;
@@ -51,6 +51,11 @@ struct GameConfig {
     uint32 minDuration;
     uint32 immunePeriod;
     uint32 attackPeriod;
+}
+
+struct ItemPrice {
+    uint256 points;
+    uint256 eth;
 }
 
 struct Player {

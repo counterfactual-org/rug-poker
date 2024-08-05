@@ -40,6 +40,8 @@ library Cards {
     error Underuse(uint256 tokenId);
     error NotCardOwner(uint256 tokenId);
     error WornOut(uint256 tokenId);
+    error UnableToRepair(uint256 tokenId);
+    error UnableToJokerize(uint256 tokenId);
 
     function gameStorage() internal pure returns (GameStorage storage s) {
         assembly {
@@ -212,5 +214,18 @@ library Cards {
             player.checkpoint();
             player.incrementShares(up);
         }
+    }
+
+    function repair(Card storage self) internal {
+        if (self.durability >= GameConfigs.latest().maxDurability) revert UnableToRepair(self.tokenId);
+
+        uint8 durability = self.durability + 1;
+        self.durability = durability;
+    }
+
+    function jokerize(Card storage self) internal {
+        if (isJoker(self)) revert UnableToJokerize(self.tokenId);
+
+        self.rank = RANK_JOKER;
     }
 }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.24;
 
-import { ITEM_KIND_REPAIR } from "../GameConstants.sol";
+import { ITEM_KIND_JOKERIZE, ITEM_KIND_REPAIR } from "../GameConstants.sol";
 import { Card, Cards } from "../models/Cards.sol";
 import { GameConfigs } from "../models/GameConfigs.sol";
 import { Player, Players } from "../models/Players.sol";
@@ -15,13 +15,13 @@ contract CardsFacet is BaseFacet {
     event RemoveCard(address indexed account, uint256 indexed tokenId);
     event BurnCard(address indexed account, uint256 indexed tokenId);
     event RepairCard(address indexed account, uint256 indexed tokenId, uint8 durability);
+    event JokerizeCard(address indexed account, uint256 indexed tokenId);
 
     error MaxCardsStaked();
     error Forbidden();
     error Underuse();
     error DurationNotElapsed();
     error WornOut();
-    error UnableToRepair();
 
     function getCard(uint256 tokenId) external view returns (Card memory) {
         return Cards.get(tokenId);
@@ -111,17 +111,24 @@ contract CardsFacet is BaseFacet {
     }
 
     function repairCard(uint256 tokenId) external {
-        Player storage player = Players.getOrRevert(msg.sender);
-
         Card storage card = Cards.get(tokenId);
         if (card.owner != msg.sender) revert Forbidden();
         if (card.underuse) revert Underuse();
-        if (card.durability >= GameConfigs.latest().maxDurability) revert UnableToRepair();
 
-        player.decrementItems(ITEM_KIND_REPAIR, 1);
-        uint8 durability = card.durability + 1;
-        card.durability = durability;
+        Players.getOrRevert(msg.sender).decrementItems(ITEM_KIND_REPAIR, 1);
+        card.repair();
 
-        emit RepairCard(msg.sender, tokenId, durability);
+        emit RepairCard(msg.sender, tokenId, card.durability);
+    }
+
+    function jokerizeCard(uint256 tokenId) external {
+        Card storage card = Cards.get(tokenId);
+        if (card.owner != msg.sender) revert Forbidden();
+        if (card.underuse) revert Underuse();
+
+        Players.getOrRevert(msg.sender).decrementItems(ITEM_KIND_JOKERIZE, 1);
+        card.jokerize();
+
+        emit JokerizeCard(msg.sender, tokenId);
     }
 }
