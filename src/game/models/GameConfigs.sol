@@ -38,6 +38,10 @@ library GameConfigs {
         return IERC721(gameStorage().nft);
     }
 
+    function treasury() internal view returns (address) {
+        return gameStorage().treasury;
+    }
+
     function evaluator() internal view returns (IEvaluator) {
         return IEvaluator(gameStorage().evaluator);
     }
