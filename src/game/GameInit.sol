@@ -15,8 +15,8 @@ contract GameInit {
         address nft,
         address randomizer,
         address evaluator,
-        uint256 randomizerGasLimit,
         address treasury,
+        uint256 randomizerGasLimit,
         GameConfig memory c
     ) external {
         LibDiamond.DiamondStorage storage ds = LibDiamond.diamondStorage();
@@ -31,8 +31,8 @@ contract GameInit {
         s.nft = nft;
         s.randomizer = randomizer;
         GameConfigs.updateEvaluator(evaluator);
-        GameConfigs.updateRandomizerGasLimit(randomizerGasLimit);
         GameConfigs.updateTreasury(treasury);
+        GameConfigs.updateRandomizerGasLimit(randomizerGasLimit);
         GameConfigs.updateConfig(c);
     }
 }

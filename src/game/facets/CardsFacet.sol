@@ -5,10 +5,10 @@ import { ITEM_ID_JOKERIZE, ITEM_ID_REPAIR } from "../GameConstants.sol";
 import { Card, Cards } from "../models/Cards.sol";
 import { GameConfigs } from "../models/GameConfigs.sol";
 import { Player, Players } from "../models/Players.sol";
-import { BaseFacet } from "./BaseFacet.sol";
+import { BaseGameFacet } from "./BaseGameFacet.sol";
 import { ERC1155Lib } from "src/libraries/ERC1155Lib.sol";
 
-contract CardsFacet is BaseFacet {
+contract CardsFacet is BaseGameFacet {
     using Cards for Card;
     using Players for Player;
 
@@ -23,6 +23,21 @@ contract CardsFacet is BaseFacet {
     error Underuse();
     error DurationNotElapsed();
     error WornOut();
+
+    function selectors() external pure override returns (bytes4[] memory s) {
+        s = new bytes4[](11);
+        s[0] = this.getCard.selector;
+        s[1] = this.cardDurability.selector;
+        s[2] = this.cardRank.selector;
+        s[3] = this.cardSuit.selector;
+        s[4] = this.cardLevel.selector;
+        s[5] = this.cardShares.selector;
+        s[6] = this.addCard.selector;
+        s[7] = this.removeCard.selector;
+        s[8] = this.burnCard.selector;
+        s[9] = this.repairCard.selector;
+        s[10] = this.jokerizeCard.selector;
+    }
 
     function getCard(uint256 tokenId) external view returns (Card memory) {
         return Cards.get(tokenId);

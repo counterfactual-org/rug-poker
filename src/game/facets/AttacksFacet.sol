@@ -8,9 +8,9 @@ import { GameConfig, GameConfigs } from "../models/GameConfigs.sol";
 import { Player, Players } from "../models/Players.sol";
 import { RandomizerRequests, RequestAction } from "../models/RandomizerRequests.sol";
 import { Rewards } from "../models/Rewards.sol";
-import { BaseFacet } from "./BaseFacet.sol";
+import { BaseGameFacet } from "./BaseGameFacet.sol";
 
-contract AttcksFacet is BaseFacet {
+contract AttacksFacet is BaseGameFacet {
     using Players for Player;
     using Cards for Card;
     using Attacks for Attack_;
@@ -29,6 +29,17 @@ contract AttcksFacet is BaseFacet {
     error AttackResolving();
     error AttackFinalized();
     error AttackOngoing();
+
+    function selectors() external pure override returns (bytes4[] memory s) {
+        s = new bytes4[](7);
+        s[0] = this.attackingTokenIdsUsedIn.selector;
+        s[1] = this.defendingTokenIdsUsedIn.selector;
+        s[2] = this.incomingAttackIdOf.selector;
+        s[3] = this.outgoingAttackIdsOf.selector;
+        s[4] = this.attack.selector;
+        s[5] = this.defend.selector;
+        s[6] = this.resolveAttack.selector;
+    }
 
     function attackingTokenIdsUsedIn(uint256 attackId) external view returns (uint256[HOLE_CARDS] memory) {
         return s.attackingTokenIds[attackId];

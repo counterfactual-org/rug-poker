@@ -5,16 +5,22 @@ import { Attack_, Attacks } from "../models/Attacks.sol";
 import { Card, Cards } from "../models/Cards.sol";
 import { Player, Players } from "../models/Players.sol";
 import { RandomizerRequest, RandomizerRequests, RequestAction } from "../models/RandomizerRequests.sol";
-import { BaseFacet } from "./BaseFacet.sol";
+import { BaseGameFacet } from "./BaseGameFacet.sol";
 import { IRandomizerCallback } from "src/interfaces/IRandomizerCallback.sol";
 
-contract RandomizerFacet is BaseFacet, IRandomizerCallback {
+contract RandomizerFacet is BaseGameFacet, IRandomizerCallback {
     using Attacks for Attack_;
     using Players for Player;
     using Cards for Card;
 
     error Forbidden();
     error InvalidRandomizerId();
+
+    function selectors() external pure override returns (bytes4[] memory s) {
+        s = new bytes4[](2);
+        s[0] = this.pendingRandomizerRequest.selector;
+        s[1] = this.randomizerCallback.selector;
+    }
 
     function pendingRandomizerRequest(uint256 id) external view returns (RandomizerRequest memory) {
         return s.pendingRandomizerRequests[id];

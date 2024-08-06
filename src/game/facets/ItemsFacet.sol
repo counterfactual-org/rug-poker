@@ -5,7 +5,7 @@ import { ITEM_ID_JOKERIZE, ITEM_ID_REPAIR } from "../GameConstants.sol";
 import { ItemEntry } from "../GameStorage.sol";
 import { GameConfigs } from "../models/GameConfigs.sol";
 import { Player, Players } from "../models/Players.sol";
-import { BaseFacet } from "./BaseFacet.sol";
+import { BaseGameFacet } from "./BaseGameFacet.sol";
 
 import { LibString } from "solmate/utils/LibString.sol";
 import { IRandomizerCallback } from "src/interfaces/IRandomizerCallback.sol";
@@ -13,7 +13,7 @@ import { ERC1155Lib, ERC1155Storage } from "src/libraries/ERC1155Lib.sol";
 import { TokenAttr, TokenAttrType, TokenURILib } from "src/libraries/TokenURILib.sol";
 import { TransferLib } from "src/libraries/TransferLib.sol";
 
-contract ItemsFacet is BaseFacet {
+contract ItemsFacet is BaseGameFacet {
     using Players for Player;
     using LibString for uint256;
 
@@ -25,6 +25,17 @@ contract ItemsFacet is BaseFacet {
     );
     event BuyItemWithPoints(uint256 indexed id, uint256 amount, uint256 points);
     event BuyItemWithETH(uint256 indexed id, uint256 amount, uint256 eth);
+
+    function selectors() external pure override returns (bytes4[] memory s) {
+        s = new bytes4[](7);
+        s[0] = this.balanceOf.selector;
+        s[1] = this.balanceOfBatch.selector;
+        s[2] = this.uri.selector;
+        s[3] = this.itemEntry.selector;
+        s[4] = this.updateItemEntry.selector;
+        s[5] = this.buyItemWithPoints.selector;
+        s[6] = this.buyItemWithETH.selector;
+    }
 
     function balanceOf(address account, uint256 id) external view returns (uint256 balance) {
         return ERC1155Lib.erc1155Storage().balanceOf[account][id];

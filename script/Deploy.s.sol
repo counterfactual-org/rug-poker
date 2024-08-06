@@ -13,41 +13,26 @@ import { TokenURIRendererV1 } from "src/TokenURIRendererV1.sol";
 contract DeployScript is BaseScript {
     address private constant RANDOMIZER = address(0x5b8bB80f2d72D0C85caB8fB169e8170A05C94bAF); // TODO
     uint256 private constant MIN_RANDOMIZER_GAS_LIMIT = 100_000;
-    address private constant EVALUTOR = address(1); // TODO
+    address private constant EVALUATOR = address(1); // TODO
     address private constant TREASURY = address(1); // TODO
-    // Game.Config CONFIG = Game.Config({
-    //     maxCards: 30,
-    //     maxAttacks: 5,
-    //     maxBootyCards: 3,
-    //     minDuration: 1 weeks,
-    //     immunePeriod: 1 hours,
-    //     attackPeriod: 24 hours,
-    //     bootyPercentages: [15, 30, 50],
-    //     attackFees: [uint256(0), 0.003e18, 0.01e18]
-    // });
 
     function _run(uint256, address owner) internal override {
         address nft = _loadDeployment("NFT");
         if (nft == address(0)) {
-            nft = address(
-                new NFT{ salt: 0 }("Rug.Poker", "POKER", RANDOMIZER, MIN_RANDOMIZER_GAS_LIMIT, address(0), owner)
-            );
+            nft =
+                address(new NFT{ salt: 0 }("Rug.Poker", "RUG", RANDOMIZER, MIN_RANDOMIZER_GAS_LIMIT, address(0), owner));
             _saveDeployment("NFT", address(nft));
         }
 
-        address game = address(1);
-        // TODO: deploy Game
-        // address game = _loadDeployment("Game");
-        // if (game == address(0)) {
-        //     game = address(
-        //         new Game{ salt: 0 }(nft, RANDOMIZER, MIN_RANDOMIZER_GAS_LIMIT, EVALUTOR, TREASURY, CONFIG, owner)
-        //     );
-        //     _saveDeployment("Game", address(game));
-        // }
+        address game = _loadDeployment("Game");
+        if (game == address(0)) {
+            game = DiamondDeployer.deployGame(nft, RANDOMIZER, EVALUATOR, TREASURY, MIN_RANDOMIZER_GAS_LIMIT, owner);
+            _saveDeployment("Game", address(game));
+        }
 
         address nftMinter = _loadDeployment("NFTMinter");
         if (nftMinter == address(0)) {
-            DiamondDeployer.deployNFTMinter(nft, TREASURY, game, owner);
+            nftMinter = DiamondDeployer.deployNFTMinter(nft, TREASURY, game, owner);
             _saveDeployment("NFTMinter", address(nftMinter));
         }
 

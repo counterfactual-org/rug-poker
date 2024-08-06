@@ -4,6 +4,13 @@ pragma solidity ^0.8.0;
 import { Diamond } from "diamond/Diamond.sol";
 import { DiamondCutFacet } from "diamond/facets/DiamondCutFacet.sol";
 import { IDiamondCut } from "diamond/interfaces/IDiamondCut.sol";
+import { GameConfig, GameInit } from "src/game/GameInit.sol";
+import { AttacksFacet } from "src/game/facets/AttacksFacet.sol";
+import { CardsFacet } from "src/game/facets/CardsFacet.sol";
+import { GameConfigsFacet } from "src/game/facets/GameConfigsFacet.sol";
+import { ItemsFacet } from "src/game/facets/ItemsFacet.sol";
+import { PlayersFacet } from "src/game/facets/PlayersFacet.sol";
+import { RandomizerFacet } from "src/game/facets/RandomizerFacet.sol";
 import { IFacet } from "src/interfaces/IFacet.sol";
 import { MinterConfig, MinterInit } from "src/minter/MinterInit.sol";
 import { ClaimsFacet } from "src/minter/facets/ClaimsFacet.sol";
@@ -20,6 +27,46 @@ library DiamondDeployer {
     uint8 private constant WINNER_RATIO_GOLD = 50;
     uint8 private constant WINNER_RATIO_SILVER = 30;
     uint8 private constant WINNER_RATIO_BRONZE = 20;
+
+    function deployGame(
+        address nft,
+        address randomizer,
+        address evaluator,
+        address treasury,
+        uint256 randomizerGasLimit,
+        address owner
+    ) internal returns (address game) {
+        GameInit init = new GameInit();
+        IFacet[] memory facets = new IFacet[](6);
+        facets[0] = new AttacksFacet();
+        facets[1] = new CardsFacet();
+        facets[2] = new GameConfigsFacet();
+        facets[3] = new ItemsFacet();
+        facets[4] = new PlayersFacet();
+        facets[5] = new RandomizerFacet();
+        return deployDiamond(
+            facets,
+            address(init),
+            abi.encodeCall(GameInit.init, (nft, randomizer, evaluator, treasury, randomizerGasLimit, _gameConfig())),
+            owner
+        );
+    }
+
+    function _gameConfig() private pure returns (GameConfig memory) {
+        return GameConfig({
+            maxCards: 30,
+            maxJokers: 1,
+            maxAttacks: 5,
+            minBootyPercentage: 10,
+            maxBootyPercentage: 50,
+            maxBootyCards: 2,
+            minDurability: 3,
+            maxDurability: 8,
+            minDuration: 1 weeks,
+            immunePeriod: 1 hours,
+            attackPeriod: 23 hours
+        });
+    }
 
     function deployNFTMinter(address nft, address treasury, address game, address owner)
         internal
@@ -45,7 +92,13 @@ library DiamondDeployer {
         winnerRatios[0] = WINNER_RATIO_GOLD;
         winnerRatios[1] = WINNER_RATIO_SILVER;
         winnerRatios[2] = WINNER_RATIO_BRONZE;
-        return MinterConfig(PRICE, initialBonusUntil, CLAIM_LIMIT, [SHARES_TREASURY, SHARES_GAME], winnerRatios);
+        return MinterConfig({
+            price: PRICE,
+            initialBonusUntil: initialBonusUntil,
+            claimLimit: CLAIM_LIMIT,
+            shares: [SHARES_TREASURY, SHARES_GAME],
+            winnerRatios: winnerRatios
+        });
     }
 
     function deployDiamond(IFacet[] memory facets, address init, bytes memory initCallData, address owner)

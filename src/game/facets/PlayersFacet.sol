@@ -3,10 +3,21 @@ pragma solidity ^0.8.24;
 
 import { Player, Players } from "../models/Players.sol";
 import { Rewards } from "../models/Rewards.sol";
-import { BaseFacet } from "./BaseFacet.sol";
+import { BaseGameFacet } from "./BaseGameFacet.sol";
 
-contract PlayersFacet is BaseFacet {
+contract PlayersFacet is BaseGameFacet {
     using Players for Player;
+
+    function selectors() external pure override returns (bytes4[] memory s) {
+        s = new bytes4[](7);
+        s[0] = this.getPlayer.selector;
+        s[1] = this.accRewardOf.selector;
+        s[2] = this.sharesSum.selector;
+        s[3] = this.sharesOf.selector;
+        s[4] = this.updatePlayer.selector;
+        s[5] = this.checkpointPlayer.selector;
+        s[6] = this.checkpoint.selector;
+    }
 
     function getPlayer(address account) external view returns (Player memory) {
         return Players.get(account);
