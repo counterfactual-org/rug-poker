@@ -76,7 +76,7 @@ contract DeployScript is BaseScript {
 
         address svgRenderer = _loadDeployment("SvgRendererV1");
         if (svgRenderer == address(0)) {
-            svgRenderer = address(new SvgRendererV1{ salt: 0 }());
+            svgRenderer = address(new SvgRendererV1{ salt: 0 }(game, owner));
             _saveDeployment("SvgRendererV1", address(svgRenderer));
         }
 

@@ -8,7 +8,9 @@ import { ISvgRenderer } from "src/interfaces/ISvgRenderer.sol";
 
 contract SaveSvgScript is Script {
     function run() external {
-        ISvgRenderer svgRenderer = ISvgRenderer(new SvgRendererV1());
+        address game = address(0); // TODO
+        address owner = address(0); // TODO
+        ISvgRenderer svgRenderer = ISvgRenderer(new SvgRendererV1(game, owner));
 
         bytes memory svgImage = svgRenderer.render(0);
 

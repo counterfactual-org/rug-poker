@@ -43,6 +43,10 @@ contract CardsFacet is BaseFacet {
         return card.initialized() ? card.suit : Cards.deriveSuit(tokenId);
     }
 
+    function cardLevel(uint256 tokenId) external view returns (uint256) {
+        return Cards.get(tokenId).level;
+    }
+
     function cardShares(uint256 tokenId) external view returns (uint256) {
         return Cards.get(tokenId).shares();
     }
