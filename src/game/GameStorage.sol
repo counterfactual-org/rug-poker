@@ -30,7 +30,6 @@ struct GameStorage {
     // attacks
     uint256 lastAttackId;
     mapping(uint256 attackId => Attack_) attacks;
-    mapping(address attacker => mapping(address defender => bool)) hasAttacked;
     mapping(uint256 attackId => uint256[HOLE_CARDS]) attackingTokenIds;
     mapping(uint256 attackId => uint256[HOLE_CARDS]) defendingTokenIds;
     mapping(uint256 attackId => uint8[]) defendingJokerCards;
@@ -47,6 +46,7 @@ struct GameConfig {
     uint8 maxBootyCards;
     uint8 minDurability;
     uint8 maxDurability;
+    uint8 bogoPercentage;
     uint32 minDuration;
     uint32 immunePeriod;
     uint32 attackPeriod;
@@ -64,6 +64,7 @@ struct ItemEntry {
 struct Player {
     address account;
     bool hasPlayed;
+    bool hasAttacked;
     uint64 lastDefendedAt;
     bytes32 username;
     uint256 cards;

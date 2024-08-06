@@ -73,10 +73,11 @@ contract AttacksFacet is BaseGameFacet {
         d.checkpoint();
 
         Attack_ storage a = Attacks.init(msg.sender, defender, tokenIds);
-        player.addOutgoingAttack(a.id);
-        d.updateIncomingAttack(a.id);
+        uint256 id = a.id;
+        player.addOutgoingAttack(id);
+        d.updateIncomingAttack(id);
 
-        emit Attack(a.id, msg.sender, defender, tokenIds);
+        emit Attack(id, msg.sender, defender, tokenIds);
     }
 
     function defend(

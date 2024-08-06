@@ -112,19 +112,26 @@ library Players {
 
     function increaseBogoIfHasNotPlayed(Player storage self) internal {
         if (!self.hasPlayed) {
-            address minter = INFT(gameStorage().nft).minter();
-            INFTMinter(minter).increaseBogoOf(self.account);
+            increaseBogo(self);
             self.hasPlayed = true;
         }
     }
 
-    function increaseBogoIfHasNotAttacked(Player storage self, address defender) internal {
-        GameStorage storage s = gameStorage();
-        if (!s.hasAttacked[self.account][defender]) {
-            address nftMinter = INFT(s.nft).minter();
-            INFTMinter(nftMinter).increaseBogoOf(self.account);
-            s.hasAttacked[self.account][defender] = true;
+    function increaseBogoRandomly(Player storage self, bytes32 seed) internal {
+        if (self.hasAttacked) {
+            bytes32 random = keccak256(abi.encodePacked(seed, block.number, block.timestamp));
+            if (uint8(random[uint256(random) % 32]) % 100 < GameConfigs.latest().bogoPercentage) {
+                increaseBogo(self);
+            }
+        } else {
+            increaseBogo(self);
+            self.hasAttacked = true;
         }
+    }
+
+    function increaseBogo(Player storage self) internal {
+        address minter = INFT(gameStorage().nft).minter();
+        INFTMinter(minter).increaseBogoOf(self.account);
     }
 
     function incrementCards(Player storage self) internal {

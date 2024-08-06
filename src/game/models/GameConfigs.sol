@@ -15,6 +15,7 @@ library GameConfigs {
     error InvalidAddress();
     error InvalidNumber();
     error InvalidPeriod();
+    error InvalidPercentage();
     error InvalidBootyPercentages();
     error InvalidAttackFees();
 
@@ -74,6 +75,7 @@ library GameConfigs {
         if (c.maxBootyCards == 0 || c.maxBootyCards > HOLE_CARDS) revert InvalidNumber();
         if (c.minDurability == 0 || c.maxDurability <= c.minDurability) revert InvalidNumber();
         if (c.minDuration < 1 days) revert InvalidPeriod();
+        if (c.bogoPercentage > 100) revert InvalidPercentage();
         if (c.attackPeriod < 1 hours) revert InvalidPeriod();
 
         GameStorage storage s = gameStorage();
