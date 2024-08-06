@@ -3,27 +3,52 @@ pragma solidity ^0.8.24;
 
 import { SHARES_GAME, SHARES_TREASURY } from "../MinterConstants.sol";
 import { MinterConfig, MinterConfigs } from "../models/MinterConfigs.sol";
-import { BaseFacet } from "./BaseFacet.sol";
+import { BaseMinterFacet } from "./BaseMinterFacet.sol";
 import { INFT } from "src/interfaces/INFT.sol";
 import { TransferLib } from "src/libraries/TransferLib.sol";
 
-contract MintFacet is BaseFacet {
-    event Mint(uint256 price, uint256 amount, uint256 bonus, bool freeMint, address indexed to);
+contract MintFacet is BaseMinterFacet {
+    event IncreaseBogo(address indexed account, uint256 count);
+    event Mint(uint256 price, uint256 amount, uint256 bonus, bool bogo, address indexed to);
 
-    error InsufficientFreeMinting();
-    error FreeMintingNotAvailable();
+    error Forbidden();
+    error InsufficientBogo();
     error InsufficientValue();
 
-    function mint(uint256 amount) external payable {
-        mint(amount, false);
+    function selectors() external pure override returns (bytes4[] memory s) {
+        s = new bytes4[](5);
+        s[0] = this.bogoOf.selector;
+        s[1] = this.increaseBogoOf.selector;
+        s[2] = this.mint.selector;
+        s[3] = this.mintBogo.selector;
     }
 
-    function mint(uint256 amount, bool freeMint) public payable {
-        if (freeMint) {
-            uint256 freeMinting = s.freeMintingOf[msg.sender];
-            if (freeMinting == 0) revert InsufficientFreeMinting();
-            if (amount != 1) revert FreeMintingNotAvailable();
-            s.freeMintingOf[msg.sender] = freeMinting - 1;
+    function bogoOf(address account) external view returns (uint256) {
+        return s.bogo[account];
+    }
+
+    function increaseBogoOf(address account) external {
+        if (msg.sender != s.game) revert Forbidden();
+
+        uint256 free = s.bogo[account] + 1;
+        s.bogo[account] = free;
+
+        emit IncreaseBogo(account, free);
+    }
+
+    function mint(uint256 amount) external payable {
+        _mint(amount, false);
+    }
+
+    function mintBogo() external payable {
+        _mint(1, true);
+    }
+
+    function _mint(uint256 amount, bool bogo) internal {
+        if (bogo) {
+            uint256 _bogo = s.bogo[msg.sender];
+            if (_bogo == 0) revert InsufficientBogo();
+            s.bogo[msg.sender] = _bogo - 1;
         }
 
         MinterConfig memory c = MinterConfigs.latest();
@@ -40,8 +65,8 @@ contract MintFacet is BaseFacet {
 
         uint256 bonus = block.timestamp < c.initialBonusUntil ? (amount >= 10 ? 5 : amount >= 5 ? 2 : 0) : 0;
         INFT nft = MinterConfigs.nft();
-        INFT(nft).draw{ value: INFT(nft).estimateRandomizerFee() }(amount + bonus + (freeMint ? 1 : 0), msg.sender);
+        INFT(nft).draw{ value: INFT(nft).estimateRandomizerFee() }(amount + bonus + (bogo ? 1 : 0), msg.sender);
 
-        emit Mint(totalPrice, amount, bonus, freeMint, msg.sender);
+        emit Mint(totalPrice, amount, bonus, bogo, msg.sender);
     }
 }

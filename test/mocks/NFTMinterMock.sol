@@ -15,7 +15,7 @@ contract NFTMinterMock is INFTMinter {
         return false;
     }
 
-    function increaseFreeMintingOf(address account) external { }
+    function increaseBogoOf(address account) external { }
 
     function mint(uint256 amount) external payable {
         INFT(nft).draw{ value: msg.value }(amount, msg.sender);

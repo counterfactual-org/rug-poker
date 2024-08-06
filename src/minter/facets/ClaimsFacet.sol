@@ -2,13 +2,13 @@
 pragma solidity ^0.8.24;
 
 import { MinterConfig, MinterConfigs } from "../models/MinterConfigs.sol";
-import { BaseFacet } from "./BaseFacet.sol";
+import { BaseMinterFacet } from "./BaseMinterFacet.sol";
 
 import { MerkleProofLib } from "solmate/utils/MerkleProofLib.sol";
 import { INFT } from "src/interfaces/INFT.sol";
 import { INFTMinter } from "src/interfaces/INFTMinter.sol";
 
-contract ClaimsFacet is BaseFacet {
+contract ClaimsFacet is BaseMinterFacet {
     error ClaimUnavailable();
     error InvalidMerkleRoot();
     error InvalidMerkleProof();
@@ -16,6 +16,16 @@ contract ClaimsFacet is BaseFacet {
 
     event UpdateMerkleRoot(bytes32 indexed merkleRoot, bool isMerkleRoot);
     event Claim(bytes32 indexed merkleRoot, address indexed account, uint256 indexed tokenId, uint256 amount);
+
+    function selectors() external pure override returns (bytes4[] memory s) {
+        s = new bytes4[](6);
+        s[0] = this.isMerkleRoot.selector;
+        s[1] = this.hasClaimed.selector;
+        s[2] = this.totalClaimed.selector;
+        s[3] = this.wasClaimed.selector;
+        s[4] = this.updateMerkleRoot.selector;
+        s[5] = this.claim.selector;
+    }
 
     function isMerkleRoot(bytes32 merkleRoot) external view returns (bool) {
         return s.isMerkleRoot[merkleRoot];

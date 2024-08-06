@@ -110,19 +110,19 @@ library Players {
         emit RemoveOutgoingAttack(account, attackId);
     }
 
-    function increaseFreeMintingIfHasNotPlayed(Player storage self) internal {
+    function increaseBogoIfHasNotPlayed(Player storage self) internal {
         if (!self.hasPlayed) {
             address minter = INFT(gameStorage().nft).minter();
-            INFTMinter(minter).increaseFreeMintingOf(self.account);
+            INFTMinter(minter).increaseBogoOf(self.account);
             self.hasPlayed = true;
         }
     }
 
-    function increaseFreeMintingIfHasNotAttacked(Player storage self, address defender) internal {
+    function increaseBogoIfHasNotAttacked(Player storage self, address defender) internal {
         GameStorage storage s = gameStorage();
         if (!s.hasAttacked[self.account][defender]) {
             address nftMinter = INFT(s.nft).minter();
-            INFTMinter(nftMinter).increaseFreeMintingOf(self.account);
+            INFTMinter(nftMinter).increaseBogoOf(self.account);
             s.hasAttacked[self.account][defender] = true;
         }
     }

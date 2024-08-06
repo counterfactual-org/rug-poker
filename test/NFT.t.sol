@@ -51,7 +51,7 @@ contract NFTTest is Test {
         randomizer = new RandomizerMock();
         nft = new NFT("NFT", "NFT", address(randomizer), MIN_RANDOMIZER_GAS_LIMIT, address(tokenURIRenderer), owner);
         minter = new NFTMinterMock(address(nft));
-        game = new GameMock(address(minter));
+        game = new GameMock();
 
         vm.deal(alice, 10_000e18);
         vm.deal(bob, 10_000e18);

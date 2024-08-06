@@ -56,7 +56,7 @@ contract CardsFacet is BaseFacet {
         if (player.cards >= GameConfigs.latest().maxCards) revert MaxCardsStaked();
 
         player.checkpoint();
-        player.increaseFreeMintingIfHasNotPlayed();
+        player.increaseBogoIfHasNotPlayed();
 
         Card storage card = Cards.get(tokenId);
         if (!card.initialized()) {
