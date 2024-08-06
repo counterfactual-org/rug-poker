@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.24;
 
-import { ITEM_KIND_JOKERIZE, ITEM_KIND_REPAIR } from "../GameConstants.sol";
+import { ITEM_ID_JOKERIZE, ITEM_ID_REPAIR } from "../GameConstants.sol";
 import { Card, Cards } from "../models/Cards.sol";
 import { GameConfigs } from "../models/GameConfigs.sol";
 import { Player, Players } from "../models/Players.sol";
 import { BaseFacet } from "./BaseFacet.sol";
+import { ERC1155Lib } from "src/libraries/ERC1155Lib.sol";
 
 contract CardsFacet is BaseFacet {
     using Cards for Card;
@@ -111,22 +112,26 @@ contract CardsFacet is BaseFacet {
     }
 
     function repairCard(uint256 tokenId) external {
+        Players.getOrRevert(msg.sender);
+
         Card storage card = Cards.get(tokenId);
         if (card.owner != msg.sender) revert Forbidden();
         if (card.underuse) revert Underuse();
 
-        Players.getOrRevert(msg.sender).decrementItems(ITEM_KIND_REPAIR, 1);
+        ERC1155Lib.burn(msg.sender, ITEM_ID_REPAIR, 1);
         card.repair();
 
         emit RepairCard(msg.sender, tokenId, card.durability);
     }
 
     function jokerizeCard(uint256 tokenId) external {
+        Players.getOrRevert(msg.sender);
+
         Card storage card = Cards.get(tokenId);
         if (card.owner != msg.sender) revert Forbidden();
         if (card.underuse) revert Underuse();
 
-        Players.getOrRevert(msg.sender).decrementItems(ITEM_KIND_JOKERIZE, 1);
+        ERC1155Lib.burn(msg.sender, ITEM_ID_JOKERIZE, 1);
         card.jokerize();
 
         emit JokerizeCard(msg.sender, tokenId);
