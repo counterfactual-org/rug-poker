@@ -191,23 +191,28 @@ library Cards {
     }
 
     function gainXP(Card storage self, uint32 delta) internal {
+        uint8 maxLevel = GameConfigs.latest().maxLevel;
+        uint8 level = self.level;
+        uint32 xp = self.xp;
         uint256 up;
-        while (true) {
-            uint32 xp = self.xp;
-            uint32 max = maxXP(self.level);
+        uint256 tokenId = self.tokenId;
+
+        while (level < maxLevel) {
+            uint32 max = maxXP(level);
             if (xp + delta >= max) {
                 delta -= (max - xp);
-                uint8 level = self.level + 1;
-                self.level = level;
-                self.xp = 0;
+                level += 1;
+                xp = 0;
                 up += 1;
 
-                emit LevelUp(self.tokenId, level);
+                emit LevelUp(tokenId, level);
             } else {
-                self.xp += delta;
+                xp += delta;
                 break;
             }
         }
+        self.level = level;
+        self.xp = xp;
 
         if (up > 0) {
             Player storage player = Players.get(self.owner);

@@ -46,6 +46,7 @@ struct GameConfig {
     uint8 maxBootyCards;
     uint8 minDurability;
     uint8 maxDurability;
+    uint8 maxLevel;
     uint8 bogoPercentage;
     uint32 minDuration;
     uint32 immunePeriod;
