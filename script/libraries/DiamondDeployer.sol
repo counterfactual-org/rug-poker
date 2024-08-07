@@ -31,7 +31,8 @@ library DiamondDeployer {
     function deployGame(
         address nft,
         address randomizer,
-        address evaluator,
+        address evaluator5,
+        address evaluator7,
         address treasury,
         uint256 randomizerGasLimit,
         address owner
@@ -47,7 +48,9 @@ library DiamondDeployer {
         return deployDiamond(
             facets,
             address(init),
-            abi.encodeCall(GameInit.init, (nft, randomizer, evaluator, treasury, randomizerGasLimit, _gameConfig())),
+            abi.encodeCall(
+                GameInit.init, (nft, randomizer, evaluator5, evaluator7, treasury, randomizerGasLimit, _gameConfig())
+            ),
             owner
         );
     }

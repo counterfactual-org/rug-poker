@@ -2,7 +2,9 @@
 pragma solidity ^0.8.24;
 
 import {
+    COMMUNITY_CARDS,
     HOLE_CARDS,
+    HOLE_CARDS_SMALL,
     RANK_ACE,
     RANK_EIGHT,
     RANK_FIVE,
@@ -23,6 +25,7 @@ import { GameConfig, GameConfigs } from "./GameConfigs.sol";
 import { Players } from "./Players.sol";
 import { RandomizerRequests } from "./RandomizerRequests.sol";
 import { Rewards } from "./Rewards.sol";
+import { IEvaluator } from "src/interfaces/IEvaluator.sol";
 import { INFT } from "src/interfaces/INFT.sol";
 import { INFTMinter } from "src/interfaces/INFTMinter.sol";
 
@@ -33,6 +36,7 @@ library Cards {
     uint8 constant FIELD_DURABILITY = 0;
     uint8 constant FIELD_RANK = 1;
     uint8 constant FIELD_SUIT = 2;
+    uint8 constant MAX_CARD_VALUE = 52;
 
     event MoveCard(address indexed from, address indexed to, uint256 indexed tokenId);
     event LevelUp(uint256 tokenId, uint8 level);
@@ -50,8 +54,8 @@ library Cards {
         }
     }
 
-    function lowestLevel(uint256[HOLE_CARDS] memory ids) internal view returns (uint8 level) {
-        for (uint256 i; i < HOLE_CARDS; ++i) {
+    function lowestLevel(uint256[] memory ids) internal view returns (uint8 level) {
+        for (uint256 i; i < ids.length; ++i) {
             Card storage card = Cards.get(ids[i]);
             if (i == 0 || card.level < level) {
                 level = card.level;
@@ -59,8 +63,8 @@ library Cards {
         }
     }
 
-    function highestLevel(uint256[HOLE_CARDS] memory ids) internal view returns (uint8 level) {
-        for (uint256 i; i < HOLE_CARDS; ++i) {
+    function highestLevel(uint256[] memory ids) internal view returns (uint8 level) {
+        for (uint256 i; i < ids.length; ++i) {
             Card storage card = Cards.get(ids[i]);
             if (i == 0 || card.level > level) {
                 level = card.level;
@@ -68,8 +72,58 @@ library Cards {
         }
     }
 
-    function gainXPBatch(uint256[HOLE_CARDS] memory ids, uint32 xp) internal {
-        for (uint256 i; i < HOLE_CARDS; ++i) {
+    function hasValidLength(uint256[] memory ids) internal pure returns (bool) {
+        return ids.length == HOLE_CARDS || ids.length == HOLE_CARDS_SMALL;
+    }
+
+    function isValidValue(uint8 value) internal pure returns (bool) {
+        return value < MAX_CARD_VALUE;
+    }
+
+    function evaluateHands(
+        uint256[] memory attackingTokenIds,
+        uint256[] memory defendingTokenIds,
+        uint8[] memory defendingJokerCards,
+        bytes32 random
+    )
+        internal
+        view
+        returns (
+            IEvaluator.HandRank handAttack,
+            uint256 rankAttack,
+            IEvaluator.HandRank handDefense,
+            uint256 rankDefense
+        )
+    {
+        uint256 cards = attackingTokenIds.length;
+        uint256[] memory attackingCards = new uint256[](cards + COMMUNITY_CARDS);
+        uint256[] memory defendingCards = new uint256[](cards + COMMUNITY_CARDS);
+        uint256 jokersLength = defendingJokerCards.length;
+        for (uint256 i; i < cards; ++i) {
+            uint8 rankA = Cards.get(attackingTokenIds[i]).rank;
+            uint8 suitA = Cards.get(attackingTokenIds[i]).suit;
+            attackingCards[i] = rankA * 4 + suitA;
+            if (i < jokersLength) {
+                defendingCards[i] = defendingJokerCards[i];
+                continue;
+            }
+            uint8 rankD = Cards.get(defendingTokenIds[i]).rank;
+            uint8 suitD = Cards.get(defendingTokenIds[i]).suit;
+            defendingCards[i] = rankD * 4 + suitD;
+        }
+        for (uint256 i; i < COMMUNITY_CARDS; ++i) {
+            uint8 card = uint8(random[i]) % MAX_CARD_VALUE;
+            attackingCards[HOLE_CARDS + i] = card;
+            defendingCards[HOLE_CARDS + i] = card;
+        }
+
+        IEvaluator evaluator = cards == HOLE_CARDS_SMALL ? GameConfigs.evaluator5() : GameConfigs.evaluator7();
+        (handAttack, rankAttack) = evaluator.handRank(attackingCards);
+        (handDefense, rankDefense) = evaluator.handRank(defendingCards);
+    }
+
+    function gainXPBatch(uint256[] memory ids, uint32 xp) internal {
+        for (uint256 i; i < ids.length; ++i) {
             gainXP(Cards.get(ids[i]), xp);
         }
     }

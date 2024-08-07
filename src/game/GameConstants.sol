@@ -3,8 +3,7 @@ pragma solidity ^0.8.24;
 
 import "../Constants.sol";
 
-uint8 constant MAX_LEVEL = 10;
-
+uint256 constant HOLE_CARDS_SMALL = 3;
 uint256 constant HOLE_CARDS = 5;
 uint256 constant COMMUNITY_CARDS = 2;
 

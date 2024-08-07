@@ -13,7 +13,8 @@ import { TokenURIRendererV1 } from "src/TokenURIRendererV1.sol";
 contract DeployScript is BaseScript {
     address private constant RANDOMIZER = address(0x5b8bB80f2d72D0C85caB8fB169e8170A05C94bAF); // TODO
     uint256 private constant MIN_RANDOMIZER_GAS_LIMIT = 100_000;
-    address private constant EVALUATOR = address(1); // TODO
+    address private constant EVALUATOR5 = address(1); // TODO
+    address private constant EVALUATOR7 = address(1); // TODO
     address private constant TREASURY = address(1); // TODO
 
     function _run(uint256, address owner) internal override {
@@ -26,7 +27,9 @@ contract DeployScript is BaseScript {
 
         address game = _loadDeployment("Game");
         if (game == address(0)) {
-            game = DiamondDeployer.deployGame(nft, RANDOMIZER, EVALUATOR, TREASURY, MIN_RANDOMIZER_GAS_LIMIT, owner);
+            game = DiamondDeployer.deployGame(
+                nft, RANDOMIZER, EVALUATOR5, EVALUATOR7, TREASURY, MIN_RANDOMIZER_GAS_LIMIT, owner
+            );
             _saveDeployment("Game", address(game));
         }
 

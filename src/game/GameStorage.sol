@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.24;
 
-import { HOLE_CARDS } from "./GameConstants.sol";
-
 struct GameStorage {
     // configs
     address nft;
     address randomizer;
-    address evaluator;
+    address evaluator5;
+    address evaluator7;
     uint256 randomizerGasLimit;
     address treasury;
     uint256 configVersion;
@@ -30,8 +29,8 @@ struct GameStorage {
     // attacks
     uint256 lastAttackId;
     mapping(uint256 attackId => Attack_) attacks;
-    mapping(uint256 attackId => uint256[HOLE_CARDS]) attackingTokenIds;
-    mapping(uint256 attackId => uint256[HOLE_CARDS]) defendingTokenIds;
+    mapping(uint256 attackId => uint256[]) attackingTokenIds;
+    mapping(uint256 attackId => uint256[]) defendingTokenIds;
     mapping(uint256 attackId => uint8[]) defendingJokerCards;
     // randomizer requests
     mapping(uint256 randomizerId => RandomizerRequest) pendingRandomizerRequests;

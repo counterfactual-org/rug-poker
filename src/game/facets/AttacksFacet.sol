@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.24;
 
-import { HOLE_CARDS } from "../GameConstants.sol";
 import { Attack_, Attacks } from "../models/Attacks.sol";
 import { Card, Cards } from "../models/Cards.sol";
 import { GameConfig, GameConfigs } from "../models/GameConfigs.sol";
@@ -15,7 +14,7 @@ contract AttacksFacet is BaseGameFacet {
     using Cards for Card;
     using Attacks for Attack_;
 
-    event Attack(uint256 indexed id, address indexed attacker, address indexed defender, uint256[HOLE_CARDS] tokenIds);
+    event Attack(uint256 indexed id, address indexed attacker, address indexed defender, uint256[] tokenIds);
     event Defend(uint256 indexed attackId, uint256[] tokenIds, uint256[] jokerTokenIds);
     event ResolveAttack(uint256 indexed attackId, uint256 indexed randomizerId);
     event FinalizeAttack(uint256 indexed id);
@@ -41,11 +40,11 @@ contract AttacksFacet is BaseGameFacet {
         s[6] = this.resolveAttack.selector;
     }
 
-    function attackingTokenIdsUsedIn(uint256 attackId) external view returns (uint256[HOLE_CARDS] memory) {
+    function attackingTokenIdsUsedIn(uint256 attackId) external view returns (uint256[] memory) {
         return s.attackingTokenIds[attackId];
     }
 
-    function defendingTokenIdsUsedIn(uint256 attackId) external view returns (uint256[HOLE_CARDS] memory) {
+    function defendingTokenIdsUsedIn(uint256 attackId) external view returns (uint256[] memory) {
         return s.defendingTokenIds[attackId];
     }
 
@@ -61,7 +60,7 @@ contract AttacksFacet is BaseGameFacet {
         return s.outgoingAttackIds[account];
     }
 
-    function attack(address defender, uint256[HOLE_CARDS] memory tokenIds) external {
+    function attack(address defender, uint256[] memory tokenIds) external {
         Player storage player = Players.get(msg.sender);
         if (!player.initialized()) revert NotPlayer();
 

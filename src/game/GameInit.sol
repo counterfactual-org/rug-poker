@@ -14,7 +14,8 @@ contract GameInit {
     function init(
         address nft,
         address randomizer,
-        address evaluator,
+        address evaluator5,
+        address evaluator7,
         address treasury,
         uint256 randomizerGasLimit,
         GameConfig memory c
@@ -30,7 +31,8 @@ contract GameInit {
         GameStorage storage s = GameConfigs.gameStorage();
         s.nft = nft;
         s.randomizer = randomizer;
-        GameConfigs.updateEvaluator(evaluator);
+        GameConfigs.updateEvaluator5(evaluator5);
+        GameConfigs.updateEvaluator7(evaluator7);
         GameConfigs.updateTreasury(treasury);
         GameConfigs.updateRandomizerGasLimit(randomizerGasLimit);
         GameConfigs.updateConfig(c);
