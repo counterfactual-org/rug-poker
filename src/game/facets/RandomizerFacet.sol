@@ -33,15 +33,7 @@ contract RandomizerFacet is BaseGameFacet, IRandomizerCallback {
         delete s.pendingRandomizerRequests[randomizerId];
 
         if (request.action == RequestAction.Attack) {
-            Attack_ storage attack = Attacks.get(request.id);
-            Player storage attacker = Players.get(attack.attacker);
-
-            attacker.checkpoint();
-            attacker.increaseBogoRandomly(value);
-            Players.get(attack.defender).checkpoint();
-
-            attack.determineAttackResult(value);
-            attack.finalize();
+            Attacks.get(request.id).onResolve(value);
         } else {
             revert InvalidRandomizerId();
         }

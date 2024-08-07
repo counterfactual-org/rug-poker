@@ -21,6 +21,7 @@ contract NFT is ERC721, Owned, IRandomizerCallback, INFT {
     uint256 public constant MIN_RANDOMIZER_GAS_LIMIT = 100_000;
     uint256 public constant MINTING_LIMIT = 100;
 
+    bool public immutable _staging;
     address public immutable randomizer;
     uint256 public randomizerGasLimit;
     address public tokenURIRenderer;
@@ -37,9 +38,7 @@ contract NFT is ERC721, Owned, IRandomizerCallback, INFT {
     event UpdateTokenURIRenderer(address indexed tokenURIRenderer);
     event UpdateMinter(address indexed account);
     event Draw(uint256 indexed tokenId, uint256 amount, address indexed to, uint256 indexed randomizerId);
-    event Mint(
-        uint256 indexed tokenId, uint256 amount, address indexed to, address indexed minter, uint256 randomizerId
-    );
+    event Mint(uint256 indexed tokenId, uint256 amount, address indexed to, address indexed minter);
 
     error GasLimitTooLow();
     error NotMinted();
@@ -55,13 +54,15 @@ contract NFT is ERC721, Owned, IRandomizerCallback, INFT {
     }
 
     constructor(
-        string memory _name,
-        string memory _symbol,
+        bool staging,
         address _randomizer,
         uint256 _randomizerGasLimit,
         address _tokenURIRenderer,
+        string memory _name,
+        string memory _symbol,
         address _owner
     ) ERC721(_name, _symbol) Owned(_owner) {
+        _staging = staging;
         randomizer = _randomizer;
         randomizerGasLimit = _randomizerGasLimit;
         tokenURIRenderer = _tokenURIRenderer;
@@ -123,13 +124,20 @@ contract NFT is ERC721, Owned, IRandomizerCallback, INFT {
         address _randomizer = randomizer;
         IRandomizer(_randomizer).clientDeposit{ value: fee }(address(this));
 
-        uint256 randomizerId = IRandomizer(_randomizer).request(randomizerGasLimit);
         uint256 tokenId = nextTokenId;
-        pendingRandomizerRequests[randomizerId] = RandomizerRequest(tokenId, amount, to, msg.sender);
+        if (_staging) {
+            // use psuedo-random value in staging env
+            bytes32 value = keccak256(abi.encodePacked(tokenId, block.number, block.timestamp));
+            _randomizerCallback(RandomizerRequest(tokenId, amount, to, msg.sender), value);
+            emit Draw(tokenId, amount, to, 0);
+        } else {
+            uint256 randomizerId = IRandomizer(_randomizer).request(randomizerGasLimit);
+            pendingRandomizerRequests[randomizerId] = RandomizerRequest(tokenId, amount, to, msg.sender);
+
+            emit Draw(tokenId, amount, to, randomizerId);
+        }
 
         nextTokenId = tokenId + amount;
-
-        emit Draw(tokenId, amount, to, randomizerId);
     }
 
     function randomizerCallback(uint256 randomizerId, bytes32 value) external {
@@ -139,6 +147,10 @@ contract NFT is ERC721, Owned, IRandomizerCallback, INFT {
         if (request.to == address(0)) revert InvalidRandomizerId();
         delete pendingRandomizerRequests[randomizerId];
 
+        _randomizerCallback(request, value);
+    }
+
+    function _randomizerCallback(RandomizerRequest memory request, bytes32 value) internal {
         for (uint256 i; i < request.amount; ++i) {
             uint256 tokenId = request.tokenId + i;
             _mint(request.to, tokenId);
@@ -147,7 +159,7 @@ contract NFT is ERC721, Owned, IRandomizerCallback, INFT {
             dataOf[request.tokenId] = data;
         }
 
-        emit Mint(request.tokenId, request.amount, request.to, request.minter, randomizerId);
+        emit Mint(request.tokenId, request.amount, request.to, request.minter);
 
         INFTMinter(request.minter).onMint(request.tokenId, request.amount, request.to);
     }

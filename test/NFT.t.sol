@@ -34,9 +34,7 @@ contract NFTTest is Test {
     NFT private nft;
 
     event Draw(uint256 indexed tokenId, uint256 amount, address indexed to, uint256 indexed randomizerId);
-    event Mint(
-        uint256 indexed tokenId, uint256 amount, address indexed to, address indexed minter, uint256 randomizerId
-    );
+    event Mint(uint256 indexed tokenId, uint256 amount, address indexed to, address indexed minter);
 
     error GasLimitTooLow();
     error NotMinted();
@@ -49,7 +47,9 @@ contract NFTTest is Test {
     function setUp() public {
         tokenURIRenderer = new TokenURIRendererMock();
         randomizer = new RandomizerMock();
-        nft = new NFT("NFT", "NFT", address(randomizer), MIN_RANDOMIZER_GAS_LIMIT, address(tokenURIRenderer), owner);
+        nft = new NFT(
+            false, address(randomizer), MIN_RANDOMIZER_GAS_LIMIT, address(tokenURIRenderer), "NFT", "NFT", owner
+        );
         minter = new NFTMinterMock(address(nft));
         game = new GameMock();
 
@@ -195,7 +195,7 @@ contract NFTTest is Test {
         uint256 balance = nft.balanceOf(from);
 
         vm.expectEmit();
-        emit Mint(tokenIdExpected, amountExpected, from, address(minter), randomizerId);
+        emit Mint(tokenIdExpected, amountExpected, from, address(minter));
         // calls randomizerCallback internally
         randomizer.processPendingRequest(randomizerId, data);
 

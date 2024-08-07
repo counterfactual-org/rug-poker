@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 struct GameStorage {
     // configs
+    bool staging;
     address nft;
     address randomizer;
     address evaluator5;

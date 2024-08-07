@@ -29,6 +29,7 @@ library DiamondDeployer {
     uint8 private constant WINNER_RATIO_BRONZE = 20;
 
     function deployGame(
+        bool staging,
         address nft,
         address randomizer,
         address evaluator5,
@@ -49,7 +50,8 @@ library DiamondDeployer {
             facets,
             address(init),
             abi.encodeCall(
-                GameInit.init, (nft, randomizer, evaluator5, evaluator7, treasury, randomizerGasLimit, _gameConfig())
+                GameInit.init,
+                (staging, nft, randomizer, evaluator5, evaluator7, treasury, randomizerGasLimit, _gameConfig())
             ),
             owner
         );

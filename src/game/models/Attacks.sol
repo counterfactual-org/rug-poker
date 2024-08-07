@@ -130,6 +130,17 @@ library Attacks {
         }
     }
 
+    function onResolve(Attack_ storage self, bytes32 value) internal {
+        Player storage attacker = Players.get(self.attacker);
+
+        attacker.checkpoint();
+        attacker.increaseBogoRandomly(value);
+        Players.get(self.defender).checkpoint();
+
+        determineAttackResult(self, value);
+        finalize(self);
+    }
+
     function determineAttackResult(Attack_ storage self, bytes32 seed) internal {
         GameStorage storage s = gameStorage();
 

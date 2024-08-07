@@ -12,6 +12,7 @@ import { GameConfigs } from "./models/GameConfigs.sol";
 
 contract GameInit {
     function init(
+        bool staging,
         address nft,
         address randomizer,
         address evaluator5,
@@ -29,6 +30,7 @@ contract GameInit {
         ds.supportedInterfaces[0x0e89341c] = true; // ERC165 Interface ID for ERC1155MetadataURI
 
         GameStorage storage s = GameConfigs.gameStorage();
+        s.staging = staging;
         s.nft = nft;
         s.randomizer = randomizer;
         GameConfigs.updateEvaluator5(evaluator5);
