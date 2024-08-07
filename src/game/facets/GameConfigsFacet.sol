@@ -79,7 +79,7 @@ contract GameConfigsFacet is BaseGameFacet {
         emit UpdateTreasury(_treasury);
     }
 
-    function updateConfig(GameConfig memory c) external {
+    function updateConfig(GameConfig memory c) external onlyOwner {
         GameConfigs.updateConfig(c);
 
         emit UpdateConfig();
