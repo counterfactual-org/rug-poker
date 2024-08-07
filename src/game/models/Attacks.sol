@@ -16,12 +16,13 @@ library Attacks {
     using Cards for Card;
 
     uint8 constant MAX_CARD_VALUE = 52;
+    uint32 constant MAX_RANK = 7462;
 
     event DetermineAttackResult(
-        IEvaluator.HandRank indexed rankAttack,
-        uint256 evalAttack,
-        IEvaluator.HandRank indexed rankDefense,
-        uint256 evalDefense,
+        IEvaluator.HandRank indexed handAttack,
+        uint256 rankAttack,
+        IEvaluator.HandRank indexed handDefense,
+        uint256 rankDefense,
         AttackResult indexed result
     );
 
@@ -137,30 +138,27 @@ library Attacks {
         uint256 id = self.id;
         uint256[HOLE_CARDS] memory attackingTokenIds = s.attackingTokenIds[id];
         uint256[HOLE_CARDS] memory defendingTokenIds = s.defendingTokenIds[id];
-        (IEvaluator.HandRank handAttack, uint256 evalAttack, IEvaluator.HandRank handDefense, uint256 evalDefense) =
+        (IEvaluator.HandRank handAttack, uint256 rankAttack, IEvaluator.HandRank handDefense, uint256 rankDefense) =
             _evaluate(attackingTokenIds, defendingTokenIds, s.defendingJokerCards[id], random);
 
-        AttackResult result;
-        if (evalAttack < evalDefense) {
+        Cards.gainXPBatch(attackingTokenIds, MAX_RANK - uint32(rankDefense));
+        Cards.gainXPBatch(defendingTokenIds, (MAX_RANK - uint32(rankAttack)) / 4);
+
+        AttackResult result = AttackResult.Draw;
+        if (rankAttack < rankDefense) {
             address attacker = self.attacker;
-            uint256 points = evalDefense - evalAttack;
-            Players.get(attacker).incrementPoints(points);
-            Cards.gainXPBatch(attackingTokenIds, uint32(points));
-            Rewards.moveBooty(attacker, self.defender, _bootyPercentage(self.level, defendingTokenIds));
+            Players.get(attacker).incrementPoints(rankDefense - rankAttack);
+            Rewards.moveBooty(self.defender, attacker, _bootyPercentage(self.level, defendingTokenIds));
             result = AttackResult.Success;
-        } else if (evalAttack > evalDefense) {
+        } else if (rankAttack > rankDefense) {
             address defender = self.defender;
-            uint256 points = evalAttack - evalDefense;
-            Players.get(defender).incrementPoints(points);
-            Cards.gainXPBatch(defendingTokenIds, uint32(points));
-            _moveBootyCards(id, self.attacker, defender, random);
+            Players.get(defender).incrementPoints(rankAttack - rankDefense);
+            _moveBootyCards(id, defender, random);
             result = AttackResult.Fail;
-        } else {
-            result = AttackResult.Draw;
         }
         self.result = result;
 
-        emit DetermineAttackResult(handAttack, evalAttack, handDefense, evalDefense, result);
+        emit DetermineAttackResult(handAttack, rankAttack, handDefense, rankDefense, result);
     }
 
     function _bootyPercentage(uint8 attackLevel, uint256[HOLE_CARDS] memory defendingTokenIds)
@@ -184,9 +182,9 @@ library Attacks {
         view
         returns (
             IEvaluator.HandRank handAttack,
-            uint256 evalAttack,
+            uint256 rankAttack,
             IEvaluator.HandRank handDefense,
-            uint256 evalDefense
+            uint256 rankDefense
         )
     {
         uint256[] memory attackingCards = new uint256[](HOLE_CARDS + COMMUNITY_CARDS);
@@ -210,27 +208,20 @@ library Attacks {
             defendingCards[HOLE_CARDS + i] = card;
         }
 
-        (handAttack, evalAttack) = GameConfigs.evaluator().handRank(attackingCards);
-        (handDefense, evalDefense) = GameConfigs.evaluator().handRank(defendingCards);
+        IEvaluator evaluator = GameConfigs.evaluator();
+        (handAttack, rankAttack) = evaluator.handRank(attackingCards);
+        (handDefense, rankDefense) = evaluator.handRank(defendingCards);
     }
 
-    function _moveBootyCards(uint256 id, address attacker, address defender, bytes32 random) private {
+    function _moveBootyCards(uint256 id, address to, bytes32 random) private {
         GameStorage storage s = gameStorage();
 
-        uint256 sharesDelta;
         uint256 bootyCards = uint256(uint8(random[4])) % GameConfigs.latest().maxBootyCards + 1;
         for (uint256 i; i < bootyCards; ++i) {
             uint256 index = uint256(uint8(random[(5 + i) % 32])) % s.attackingTokenIds[id].length;
             uint256 tokenId = s.attackingTokenIds[id][index];
-            Card storage card = Cards.get(tokenId);
-            if (card.owner != defender) {
-                card.owner = defender;
-                sharesDelta += card.shares();
-            }
+            Cards.get(tokenId).move(to);
         }
-
-        Players.get(attacker).decrementShares(sharesDelta);
-        Players.get(defender).incrementShares(sharesDelta);
     }
 
     function finalize(Attack_ storage self) internal {

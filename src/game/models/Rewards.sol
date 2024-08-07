@@ -5,6 +5,7 @@ import { GameStorage } from "../GameStorage.sol";
 import { TransferLib } from "src/libraries/TransferLib.sol";
 
 library Rewards {
+    event MoveBooty(address indexed attacker, address indexed defender, uint256 booty);
     event ClaimReward(address indexed account, uint256 amount);
     event Checkpoint(uint256 accRewardPerShare, uint256 reserve);
 
@@ -29,14 +30,16 @@ library Rewards {
         }
     }
 
-    function moveBooty(address attacker, address defender, uint8 bootyPercentage) internal {
+    function moveBooty(address from, address to, uint8 bootyPercentage) internal {
         GameStorage storage s = gameStorage();
 
-        uint256 reward = s.accReward[defender];
+        uint256 reward = s.accReward[from];
         uint256 booty = reward * bootyPercentage / 100;
 
-        s.accReward[attacker] += booty;
-        s.accReward[defender] = reward - booty;
+        s.accReward[from] = reward - booty;
+        s.accReward[to] += booty;
+
+        emit MoveBooty(from, to, booty);
     }
 
     function claim(address owner, uint256 shares) internal {

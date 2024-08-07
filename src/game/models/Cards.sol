@@ -34,6 +34,7 @@ library Cards {
     uint8 constant FIELD_RANK = 1;
     uint8 constant FIELD_SUIT = 2;
 
+    event MoveCard(address indexed from, address indexed to, uint256 indexed tokenId);
     event LevelUp(uint256 tokenId, uint8 level);
 
     error CardNotAdded(uint256 tokenId);
@@ -187,6 +188,19 @@ library Cards {
 
         if (durability == 1) {
             Players.get(self.owner).decrementShares(shares(self));
+        }
+    }
+
+    function move(Card storage self, address to) internal {
+        address from = self.owner;
+        if (from != to) {
+            self.owner = to;
+
+            uint256 _shares = shares(self);
+            Players.get(from).decrementShares(_shares);
+            Players.get(to).incrementShares(_shares);
+
+            emit MoveCard(from, from, self.tokenId);
         }
     }
 
