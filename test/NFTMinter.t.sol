@@ -83,22 +83,26 @@ contract NFTMinterTest is Test {
     }
 
     function test_mint() public {
-        _mint(0, 0, 1, true, PRICE, alice);
-        _mint(1, 1, 5, true, PRICE * 5 * 88 / 100, alice);
-        _mint(2, 8, 10, true, PRICE * 10 * 80 / 100, alice);
+        _mint(0, 0, 1, 0, PRICE, alice);
+        _mint(1, 1, 3, 2, PRICE * 3, alice);
+        _mint(2, 6, 5, 4, PRICE * 5, alice);
+        _mint(3, 15, 10, 10, PRICE * 10, alice);
 
         _randomizerCallback(0, 0, 1, alice);
-        _randomizerCallback(1, 1, 7, alice);
-        _randomizerCallback(2, 8, 15, alice);
+        _randomizerCallback(1, 1, 5, alice);
+        _randomizerCallback(2, 6, 9, alice);
+        _randomizerCallback(3, 15, 20, alice);
 
         vm.warp(vm.getBlockTimestamp() + 2 weeks);
-        _mint(3, 23, 1, false, PRICE, alice);
-        _mint(4, 24, 5, false, PRICE * 5 * 88 / 100, alice);
-        _mint(5, 29, 10, false, PRICE * 10 * 80 / 100, alice);
+        _mint(4, 35, 1, 0, PRICE, alice);
+        _mint(5, 36, 3, 1, PRICE * 3, alice);
+        _mint(6, 40, 5, 2, PRICE * 5, alice);
+        _mint(7, 47, 10, 5, PRICE * 10, alice);
 
-        _randomizerCallback(3, 23, 1, alice);
-        _randomizerCallback(4, 24, 5, alice);
-        _randomizerCallback(5, 29, 10, alice);
+        _randomizerCallback(4, 35, 1, alice);
+        _randomizerCallback(5, 36, 4, alice);
+        _randomizerCallback(6, 40, 7, alice);
+        _randomizerCallback(7, 47, 15, alice);
     }
 
     function test_mintBogo() public {
@@ -119,21 +123,14 @@ contract NFTMinterTest is Test {
 
     function test_mint_100() public {
         vm.warp(vm.getBlockTimestamp() + 2 weeks);
-        _mint(0, 0, 100, false, PRICE * 100 * 80 / 100, alice);
+        _mint(0, 0, 95, 5, PRICE * 95, alice);
         _randomizerCallback(0, 0, 100, alice);
     }
 
-    function _mint(
-        uint256 randomizerId,
-        uint256 tokenId,
-        uint256 amount,
-        bool bonusApplied,
-        uint256 price,
-        address from
-    ) internal {
+    function _mint(uint256 randomizerId, uint256 tokenId, uint256 amount, uint256 bonus, uint256 price, address from)
+        internal
+    {
         changePrank(from, from);
-
-        uint256 bonus = (bonusApplied ? amount >= 10 ? 5 : amount >= 5 ? 2 : 0 : 0);
 
         vm.expectEmit();
         emit TransferETH(treasury, price * SHARES_TREASURY / 100);
@@ -160,19 +157,18 @@ contract NFTMinterTest is Test {
     }
 
     function test_onMint() public {
-        vm.warp(vm.getBlockTimestamp() + 2 weeks + 5);
+        vm.warp(vm.getBlockTimestamp() + 2 weeks + 4);
 
-        uint256 price = PRICE * 80 / 100;
-        _mint(0, 0, 100, false, 100 * price, alice);
-        _mint(1, 100, 100, false, 100 * price, alice);
-        _mint(2, 200, 100, false, 100 * price, alice);
-        _mint(3, 300, 100, false, 100 * price, alice);
-        _mint(4, 400, 100, false, 100 * price, alice);
-        _mint(5, 500, 100, false, 100 * price, bob);
-        _mint(6, 600, 100, false, 100 * price, bob);
-        _mint(7, 700, 100, false, 100 * price, bob);
-        _mint(8, 800, 100, false, 100 * price, charlie);
-        _mint(9, 900, 100, false, 100 * price, charlie);
+        _mint(0, 0, 95, 5, PRICE * 95, alice);
+        _mint(1, 100, 95, 5, PRICE * 95, alice);
+        _mint(2, 200, 95, 5, PRICE * 95, alice);
+        _mint(3, 300, 95, 5, PRICE * 95, alice);
+        _mint(4, 400, 95, 5, PRICE * 95, alice);
+        _mint(5, 500, 95, 5, PRICE * 95, bob);
+        _mint(6, 600, 95, 5, PRICE * 95, bob);
+        _mint(7, 700, 95, 5, PRICE * 95, bob);
+        _mint(8, 800, 95, 5, PRICE * 95, charlie);
+        _mint(9, 900, 95, 5, PRICE * 95, charlie);
 
         _randomizerCallback(0, 0, 100, alice);
         _randomizerCallback(1, 100, 100, alice);
@@ -185,9 +181,9 @@ contract NFTMinterTest is Test {
         _randomizerCallback(8, 800, 100, charlie);
         _randomizerCallback(9, 900, 100, charlie);
 
-        uint256 jackpot = 1000 * price * (100 - SHARES_TREASURY - SHARES_GAME) / 100;
+        uint256 jackpot = 950 * PRICE * (100 - SHARES_TREASURY - SHARES_GAME) / 100;
         assertEq(JackpotFacet(minter).jackpot(), jackpot);
-        assertEq(JackpotFacet(minter).entrantsLength(), 1000);
+        assertEq(JackpotFacet(minter).entrantsLength(), 950);
 
         changePrank(alice, alice);
 
@@ -209,7 +205,7 @@ contract NFTMinterTest is Test {
         randomizer.processPendingRequest(10, bytes32(0));
 
         assertEq(JackpotFacet(minter).batchId(), 1);
-        assertEq(JackpotFacet(minter).entrantsOffset(), 1001);
-        assertEq(JackpotFacet(minter).entrantsLength(), 1001);
+        assertEq(JackpotFacet(minter).entrantsOffset(), 951);
+        assertEq(JackpotFacet(minter).entrantsLength(), 951);
     }
 }

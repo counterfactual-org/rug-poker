@@ -9,7 +9,7 @@ import { TransferLib } from "src/libraries/TransferLib.sol";
 
 contract MintFacet is BaseMinterFacet {
     event IncreaseBogo(address indexed account, uint256 count);
-    event Mint(uint256 price, uint256 amount, uint256 bonus, bool bogo, address indexed to);
+    event Mint(uint256 price, uint256 amount, uint256 bonus, bool useBogo, address indexed to);
 
     error Forbidden();
     error InsufficientBogo();
@@ -44,16 +44,15 @@ contract MintFacet is BaseMinterFacet {
         _mint(1, true);
     }
 
-    function _mint(uint256 amount, bool bogo) internal {
-        if (bogo) {
-            uint256 _bogo = s.bogo[msg.sender];
-            if (_bogo == 0) revert InsufficientBogo();
-            s.bogo[msg.sender] = _bogo - 1;
+    function _mint(uint256 amount, bool useBogo) internal {
+        if (useBogo) {
+            uint256 bogo = s.bogo[msg.sender];
+            if (bogo == 0) revert InsufficientBogo();
+            s.bogo[msg.sender] = bogo - 1;
         }
 
         MinterConfig memory c = MinterConfigs.latest();
-        uint256 rate = (amount >= 10) ? 80 : (amount >= 5) ? 88 : 100;
-        uint256 totalPrice = amount * c.price * rate / 100;
+        uint256 totalPrice = amount * c.price;
         if (msg.value < totalPrice) revert InsufficientValue();
 
         TransferLib.transferETH(s.treasury, totalPrice * c.shares[SHARES_TREASURY] / 100, address(0));
@@ -63,10 +62,13 @@ contract MintFacet is BaseMinterFacet {
             s.entrants.push(msg.sender);
         }
 
-        uint256 bonus = block.timestamp < c.initialBonusUntil ? (amount >= 10 ? 5 : amount >= 5 ? 2 : 0) : 0;
+        uint256 bonus = (amount >= 10 ? 5 : amount >= 5 ? 2 : amount >= 3 ? 1 : 0);
+        if (block.timestamp < c.initialBonusUntil) {
+            bonus = bonus * 2;
+        }
         INFT nft = MinterConfigs.nft();
-        INFT(nft).draw{ value: INFT(nft).estimateRandomizerFee() }(amount + bonus + (bogo ? 1 : 0), msg.sender);
+        nft.draw{ value: nft.estimateRandomizerFee() }(amount + bonus + (useBogo ? 1 : 0), msg.sender);
 
-        emit Mint(totalPrice, amount, bonus, bogo, msg.sender);
+        emit Mint(totalPrice, amount, bonus, useBogo, msg.sender);
     }
 }
