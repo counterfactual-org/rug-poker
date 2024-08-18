@@ -28,6 +28,7 @@ library Attacks {
     error InvalidAddress();
     error InvalidNumberOfCards();
     error DuplicateTokenIds();
+    error DuplicateCards();
     error NotPlayer();
     error JokerNotAllowed();
     error AttackOver();
@@ -57,6 +58,7 @@ library Attacks {
         if (defender == address(0) || attacker == defender) revert InvalidAddress();
         if (!Cards.hasValidLength(tokenIds)) revert InvalidNumberOfCards();
         if (ArrayLib.hasDuplicate(tokenIds)) revert DuplicateTokenIds();
+        if (!Cards.areDistinct(tokenIds)) revert DuplicateCards();
 
         for (uint256 i; i < tokenIds.length; ++i) {
             Card storage card = Cards.get(tokenIds[i]);
@@ -99,6 +101,7 @@ library Attacks {
 
         uint256[] memory ids = _populateDefendingTokenIds(tokenIds, jokerTokenIds, jokerCards);
         if (ArrayLib.hasDuplicate(ids)) revert DuplicateTokenIds();
+        if (!Cards.areDistinct(ids)) revert DuplicateCards();
 
         for (uint256 i; i < ids.length; ++i) {
             Card storage card = Cards.get(ids[i]);

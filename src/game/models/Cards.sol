@@ -54,6 +54,17 @@ library Cards {
         }
     }
 
+    function areDistinct(uint256[] memory ids) internal view returns (bool) {
+        for (uint256 i; i < ids.length - 1; ++i) {
+            for (uint256 j = i + 1; j < ids.length; ++j) {
+                Card storage cardA = Cards.get(ids[i]);
+                Card storage cardB = Cards.get(ids[j]);
+                if (cardA.rank == cardB.rank && cardA.suit == cardB.suit) return true;
+            }
+        }
+        return false;
+    }
+
     function lowestLevel(uint256[] memory ids) internal view returns (uint8 level) {
         for (uint256 i; i < ids.length; ++i) {
             Card storage card = Cards.get(ids[i]);
