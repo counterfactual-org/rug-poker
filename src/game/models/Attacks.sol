@@ -140,11 +140,11 @@ library Attacks {
         attacker.increaseBogoRandomly(value);
         Players.get(self.defender).checkpoint();
 
-        determineAttackResult(self, value);
-        finalize(self);
+        AttackResult result = determineAttackResult(self, value);
+        finalize(self, result);
     }
 
-    function determineAttackResult(Attack_ storage self, bytes32 seed) internal {
+    function determineAttackResult(Attack_ storage self, bytes32 seed) internal returns (AttackResult result) {
         GameStorage storage s = gameStorage();
 
         bytes32 random = keccak256(abi.encodePacked(seed, block.number, block.timestamp));
@@ -157,7 +157,7 @@ library Attacks {
         Cards.gainXPBatch(attackingTokenIds, MAX_RANK - uint32(rankDefense));
         Cards.gainXPBatch(defendingTokenIds, (MAX_RANK - uint32(rankAttack)) / 4);
 
-        AttackResult result = AttackResult.Draw;
+        result = AttackResult.Draw;
         if (rankAttack < rankDefense) {
             address attacker = self.attacker;
             Players.get(attacker).incrementPoints(rankDefense - rankAttack);
@@ -192,7 +192,7 @@ library Attacks {
         }
     }
 
-    function finalize(Attack_ storage self) internal {
+    function finalize(Attack_ storage self, AttackResult result) internal {
         if (self.finalized) revert AttackFinalized();
 
         GameStorage storage s = gameStorage();
@@ -201,12 +201,14 @@ library Attacks {
         Player storage d = Players.get(defender);
         d.updateLastDefendedAt();
 
-        for (uint256 i; i < s.attackingTokenIds[id].length; ++i) {
-            Cards.get(s.attackingTokenIds[id][i]).spend();
-        }
-
-        for (uint256 i; i < s.defendingTokenIds[id].length; ++i) {
-            Cards.get(s.defendingTokenIds[id][i]).spend();
+        if (result == AttackResult.Success) {
+            for (uint256 i; i < s.defendingTokenIds[id].length; ++i) {
+                Cards.get(s.defendingTokenIds[id][i]).spend();
+            }
+        } else if (result == AttackResult.Fail) {
+            for (uint256 i; i < s.attackingTokenIds[id].length; ++i) {
+                Cards.get(s.attackingTokenIds[id][i]).spend();
+            }
         }
 
         self.resolving = false;

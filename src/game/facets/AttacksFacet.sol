@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.24;
 
-import { Attack_, Attacks } from "../models/Attacks.sol";
+import { AttackResult, Attack_, Attacks } from "../models/Attacks.sol";
 import { Card, Cards } from "../models/Cards.sol";
 import { GameConfig, GameConfigs } from "../models/GameConfigs.sol";
 import { Player, Players } from "../models/Players.sol";
@@ -117,7 +117,7 @@ contract AttacksFacet is BaseGameFacet {
 
             Rewards.moveBooty(a.attacker, a.defender, c.maxBootyPercentage);
 
-            a.finalize();
+            a.finalize(AttackResult.Fail);
 
             emit FinalizeAttack(attackId);
         }
