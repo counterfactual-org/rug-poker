@@ -34,8 +34,9 @@ library Cards {
     using RandomizerRequests for RandomizerRequest;
 
     uint8 constant FIELD_DURABILITY = 0;
-    uint8 constant FIELD_RANK = 1;
-    uint8 constant FIELD_SUIT = 2;
+    uint8 constant FIELD_DURATION = 1;
+    uint8 constant FIELD_RANK = 2;
+    uint8 constant FIELD_SUIT = 3;
     uint8 constant MAX_CARD_VALUE = 52;
 
     event MoveCard(address indexed from, address indexed to, uint256 indexed tokenId);
@@ -152,6 +153,7 @@ library Cards {
         self.tokenId = tokenId;
         self.owner = owner;
         self.durability = deriveDurability(tokenId);
+        self.duration = deriveDuration(tokenId);
         self.rank = deriveRank(tokenId);
         self.suit = deriveSuit(tokenId);
         self.level = 1;
@@ -177,7 +179,7 @@ library Cards {
     }
 
     function durationElapsed(Card storage self) internal view returns (bool) {
-        return self.lastAddedAt + GameConfigs.latest().minDuration < block.timestamp;
+        return self.lastAddedAt + self.duration < block.timestamp;
     }
 
     function deriveDurability(uint256 tokenId) internal view returns (uint8) {
@@ -187,6 +189,15 @@ library Cards {
 
         bytes32 data = nft.dataOf(tokenId);
         return c.minDurability + (uint8(data[FIELD_DURABILITY]) % (c.maxDurability - c.minDurability));
+    }
+
+    function deriveDuration(uint256 tokenId) internal view returns (uint32) {
+        GameConfig memory c = GameConfigs.latest();
+        INFT nft = GameConfigs.nft();
+        if (INFTMinter(nft.minter()).isAirdrop(tokenId)) return c.maxDuration;
+
+        bytes32 data = nft.dataOf(tokenId);
+        return c.minDuration + (uint8(data[FIELD_DURATION]) % (c.maxDuration - c.minDuration));
     }
 
     function deriveRank(uint256 tokenId) internal view returns (uint8) {

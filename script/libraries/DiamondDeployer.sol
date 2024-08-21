@@ -68,6 +68,7 @@ library DiamondDeployer {
             minDurability: 3,
             maxDurability: 8,
             minDuration: 1 weeks,
+            maxDuration: 3 weeks,
             maxLevel: 10,
             bogoPercentage: 10,
             immunePeriod: 1 hours,

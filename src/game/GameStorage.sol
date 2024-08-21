@@ -49,6 +49,7 @@ struct GameConfig {
     uint8 maxLevel;
     uint8 bogoPercentage;
     uint32 minDuration;
+    uint32 maxDuration;
     uint32 immunePeriod;
     uint32 attackPeriod;
 }
@@ -76,6 +77,7 @@ struct Card {
     uint256 tokenId;
     address owner;
     uint8 durability;
+    uint32 duration;
     uint8 rank;
     uint8 suit;
     uint8 level;
