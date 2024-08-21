@@ -115,7 +115,7 @@ contract AttacksFacet is BaseGameFacet {
             GameConfig memory c = GameConfigs.latest();
             if (block.timestamp <= a.startedAt + c.attackPeriod) revert AttackOngoing();
 
-            Rewards.moveBooty(a.attacker, a.defender, c.maxBootyPercentage);
+            Rewards.transferAccReward(a.attacker, a.defender, c.maxBootyPercentage);
 
             a.finalize(AttackResult.Fail);
 

@@ -82,7 +82,6 @@ library GameConfigs {
         if (c.minBootyPercentage >= c.maxBootyPercentage || c.maxBootyPercentage >= 100) {
             revert InvalidBootyPercentages();
         }
-        if (c.maxBootyCards == 0 || c.maxBootyCards > HOLE_CARDS_SMALL) revert InvalidNumber();
         if (c.minDurability == 0 || c.maxDurability <= c.minDurability) revert InvalidNumber();
         if (c.minDuration < 1 days) revert InvalidPeriod();
         if (c.bogoPercentage > 100) revert InvalidPercentage();

@@ -66,24 +66,6 @@ library Cards {
         return false;
     }
 
-    function lowestLevel(uint256[] memory ids) internal view returns (uint8 level) {
-        for (uint256 i; i < ids.length; ++i) {
-            Card storage card = Cards.get(ids[i]);
-            if (i == 0 || card.level < level) {
-                level = card.level;
-            }
-        }
-    }
-
-    function highestLevel(uint256[] memory ids) internal view returns (uint8 level) {
-        for (uint256 i; i < ids.length; ++i) {
-            Card storage card = Cards.get(ids[i]);
-            if (i == 0 || card.level > level) {
-                level = card.level;
-            }
-        }
-    }
-
     function hasValidLength(uint256[] memory ids) internal pure returns (bool) {
         return ids.length == HOLE_CARDS || ids.length == HOLE_CARDS_SMALL;
     }
@@ -141,7 +123,7 @@ library Cards {
     }
 
     function maxXP(uint8 level) internal pure returns (uint32 xp) {
-        return 1000 * level * level;
+        return 3000 * level * level;
     }
 
     function get(uint256 tokenId) internal view returns (Card storage self) {

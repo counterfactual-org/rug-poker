@@ -43,7 +43,6 @@ struct GameConfig {
     uint8 maxAttacks;
     uint8 minBootyPercentage;
     uint8 maxBootyPercentage;
-    uint8 maxBootyCards;
     uint8 minDurability;
     uint8 maxDurability;
     uint8 maxLevel;
@@ -91,7 +90,6 @@ struct Attack_ {
     bool resolving;
     bool finalized;
     AttackResult result;
-    uint8 level;
     address attacker;
     address defender;
     uint64 startedAt;

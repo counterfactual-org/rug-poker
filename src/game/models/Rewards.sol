@@ -30,11 +30,11 @@ library Rewards {
         }
     }
 
-    function moveBooty(address from, address to, uint8 bootyPercentage) internal {
+    function transferAccReward(address from, address to, uint8 percentage) internal {
         GameStorage storage s = gameStorage();
 
         uint256 reward = s.accReward[from];
-        uint256 booty = reward * bootyPercentage / 100;
+        uint256 booty = reward * percentage / 100;
 
         s.accReward[from] = reward - booty;
         s.accReward[to] += booty;

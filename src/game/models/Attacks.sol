@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.24;
 
+import { COMMUNITY_CARDS } from "../GameConstants.sol";
 import { AttackResult, Attack_, GameStorage } from "../GameStorage.sol";
 import { Card, Cards } from "./Cards.sol";
 import { GameConfig, GameConfigs } from "./GameConfigs.sol";
@@ -15,7 +16,6 @@ library Attacks {
     using Cards for Card;
 
     uint32 constant MAX_RANK = 7462;
-    uint8 constant MAX_LEVEL = 10;
 
     event DetermineAttackResult(
         IEvaluator.HandRank indexed handAttack,
@@ -67,8 +67,7 @@ library Attacks {
         }
 
         uint256 id = s.lastAttackId + 1;
-        uint8 level = Cards.lowestLevel(tokenIds);
-        s.attacks[id] = Attack_(id, false, false, AttackResult.None, level, attacker, defender, uint64(block.timestamp));
+        s.attacks[id] = Attack_(id, false, false, AttackResult.None, attacker, defender, uint64(block.timestamp));
         s.lastAttackId = id;
 
         s.attackingTokenIds[id] = tokenIds;
@@ -154,19 +153,12 @@ library Attacks {
         (IEvaluator.HandRank handAttack, uint256 rankAttack, IEvaluator.HandRank handDefense, uint256 rankDefense) =
             Cards.evaluateHands(attackingTokenIds, defendingTokenIds, s.defendingJokerCards[id], random);
 
-        Cards.gainXPBatch(attackingTokenIds, MAX_RANK - uint32(rankDefense));
-        Cards.gainXPBatch(defendingTokenIds, (MAX_RANK - uint32(rankAttack)) / 4);
-
         result = AttackResult.Draw;
         if (rankAttack < rankDefense) {
-            address attacker = self.attacker;
-            Players.get(attacker).incrementPoints(rankDefense - rankAttack);
-            Rewards.moveBooty(self.defender, attacker, _bootyPercentage(self.level, defendingTokenIds));
+            _processSuccess(self.attacker, self.defender, rankAttack, rankDefense, attackingTokenIds, defendingTokenIds);
             result = AttackResult.Success;
         } else if (rankAttack > rankDefense) {
-            address defender = self.defender;
-            Players.get(defender).incrementPoints(rankAttack - rankDefense);
-            _moveBootyCards(id, defender, random);
+            _processFail(self.defender, rankAttack, rankDefense, attackingTokenIds, defendingTokenIds, random);
             result = AttackResult.Fail;
         }
         self.result = result;
@@ -174,22 +166,72 @@ library Attacks {
         emit DetermineAttackResult(handAttack, rankAttack, handDefense, rankDefense, result);
     }
 
-    function _bootyPercentage(uint8 attackLevel, uint256[] memory defendingTokenIds) private view returns (uint8) {
-        GameConfig memory c = GameConfigs.latest();
-        uint8 defenseLevel = Cards.highestLevel(defendingTokenIds);
-        if (defenseLevel >= attackLevel) return c.minBootyPercentage;
-        return (attackLevel - defenseLevel) * (c.maxBootyPercentage - c.minBootyPercentage) / MAX_LEVEL;
+    function _processSuccess(
+        address attacker,
+        address defender,
+        uint256 rankAttack,
+        uint256 rankDefense,
+        uint256[] memory attackingTokenIds,
+        uint256[] memory defendingTokenIds
+    ) private {
+        uint8 percentage =
+            _bootyPercentage(_bootyPoints(attackingTokenIds), _bootyPoints(defendingTokenIds), attackingTokenIds.length);
+        Rewards.transferAccReward(defender, attacker, percentage);
+
+        Players.get(attacker).incrementPoints(rankDefense - rankAttack);
+
+        Cards.gainXPBatch(attackingTokenIds, (MAX_RANK - uint32(rankAttack)));
+        Cards.gainXPBatch(defendingTokenIds, (MAX_RANK - uint32(rankDefense)) / 2);
     }
 
-    function _moveBootyCards(uint256 id, address to, bytes32 random) private {
-        GameStorage storage s = gameStorage();
+    function _bootyPercentage(uint256 attackBootyPoints, uint256 defenseBootyPoints, uint256 cards)
+        private
+        view
+        returns (uint8)
+    {
+        GameConfig memory c = GameConfigs.latest();
+        if (defenseBootyPoints >= attackBootyPoints) return c.minBootyPercentage;
+        return uint8(
+            (attackBootyPoints - defenseBootyPoints) * (c.maxBootyPercentage - c.minBootyPercentage)
+                / _maxBootyPointsDiff(cards)
+        );
+    }
 
-        uint256 bootyCards = uint256(uint8(random[4])) % GameConfigs.latest().maxBootyCards + 1;
+    function _processFail(
+        address defender,
+        uint256 rankAttack,
+        uint256 rankDefense,
+        uint256[] memory attackingTokenIds,
+        uint256[] memory defendingTokenIds,
+        bytes32 random
+    ) private {
+        uint256 cards = attackingTokenIds.length;
+        uint256 attackBootyPoints = _bootyPoints(attackingTokenIds);
+        uint256 defenseBootyPoints = _bootyPoints(defendingTokenIds);
+        uint256 bootyCards = (defenseBootyPoints < attackBootyPoints)
+            ? 1
+            : (defenseBootyPoints - attackBootyPoints) * cards / _maxBootyPointsDiff(cards) + 1;
         for (uint256 i; i < bootyCards; ++i) {
-            uint256 index = uint256(uint8(random[(5 + i) % 32])) % s.attackingTokenIds[id].length;
-            uint256 tokenId = s.attackingTokenIds[id][index];
-            Cards.get(tokenId).move(to);
+            uint256 index = uint256(uint8(random[(COMMUNITY_CARDS + i) % 32])) % cards;
+            uint256 tokenId = attackingTokenIds[index];
+            Cards.get(tokenId).move(defender);
         }
+
+        Players.get(defender).incrementPoints(rankAttack - rankDefense);
+
+        Cards.gainXPBatch(attackingTokenIds, (MAX_RANK - uint32(rankAttack)) / 2);
+        Cards.gainXPBatch(defendingTokenIds, (MAX_RANK - uint32(rankDefense)));
+    }
+
+    function _bootyPoints(uint256[] memory tokenIds) private view returns (uint256 points) {
+        for (uint256 i; i < tokenIds.length; ++i) {
+            uint8 level = Cards.get(tokenIds[i]).level;
+            points += level ** 2;
+        }
+    }
+
+    function _maxBootyPointsDiff(uint256 cards) private view returns (uint256) {
+        return (((GameConfigs.latest().maxLevel) ** 2) - 1) * cards;
     }
 
     function finalize(Attack_ storage self, AttackResult result) internal {
