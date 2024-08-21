@@ -2,10 +2,11 @@
 pragma solidity ^0.8.24;
 
 import { GameStorage } from "../GameStorage.sol";
+import { GameConfigs } from "./GameConfigs.sol";
 import { TransferLib } from "src/libraries/TransferLib.sol";
 
 library Rewards {
-    event MoveBooty(address indexed attacker, address indexed defender, uint256 booty);
+    event MoveAccReward(address indexed from, address indexed to, uint256 amount);
     event ClaimReward(address indexed account, uint256 amount);
     event Checkpoint(uint256 accRewardPerShare, uint256 reserve);
 
@@ -30,16 +31,19 @@ library Rewards {
         }
     }
 
-    function transferAccReward(address from, address to, uint8 percentage) internal {
+    function moveAccReward(address from, address to, uint8 percentage) internal {
         GameStorage storage s = gameStorage();
 
         uint256 reward = s.accReward[from];
-        uint256 booty = reward * percentage / 100;
+        uint256 amount = reward * percentage / 100;
 
-        s.accReward[from] = reward - booty;
-        s.accReward[to] += booty;
+        uint256 fee = amount / 10;
+        s.accReward[from] = reward - amount;
+        s.accReward[to] += amount - fee;
 
-        emit MoveBooty(from, to, booty);
+        TransferLib.transferETH(s.treasury, fee, address(0));
+
+        emit MoveAccReward(from, to, amount);
     }
 
     function claim(address owner, uint256 shares) internal {

@@ -176,7 +176,7 @@ library Attacks {
     ) private {
         uint8 percentage =
             _bootyPercentage(_bootyPoints(attackingTokenIds), _bootyPoints(defendingTokenIds), attackingTokenIds.length);
-        Rewards.transferAccReward(defender, attacker, percentage);
+        Rewards.moveAccReward(defender, attacker, percentage);
 
         Players.get(attacker).incrementPoints(rankDefense - rankAttack);
 
