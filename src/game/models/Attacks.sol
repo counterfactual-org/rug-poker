@@ -180,8 +180,8 @@ library Attacks {
 
         Players.get(attacker).incrementPoints(rankDefense - rankAttack);
 
-        Cards.gainXPBatch(attackingTokenIds, (MAX_RANK - uint32(rankAttack)));
-        Cards.gainXPBatch(defendingTokenIds, (MAX_RANK - uint32(rankDefense)) / 2);
+        Cards.gainXPBatch(attackingTokenIds, (MAX_RANK - uint32(rankDefense)));
+        Cards.gainXPBatch(defendingTokenIds, (MAX_RANK - uint32(rankAttack)) / 10);
     }
 
     function _bootyPercentage(uint256 attackBootyPoints, uint256 defenseBootyPoints, uint256 cards)
@@ -219,19 +219,21 @@ library Attacks {
 
         Players.get(defender).incrementPoints(rankAttack - rankDefense);
 
-        Cards.gainXPBatch(attackingTokenIds, (MAX_RANK - uint32(rankAttack)) / 2);
-        Cards.gainXPBatch(defendingTokenIds, (MAX_RANK - uint32(rankDefense)));
+        Cards.gainXPBatch(attackingTokenIds, (MAX_RANK - uint32(rankDefense)) / 10);
+        Cards.gainXPBatch(defendingTokenIds, (MAX_RANK - uint32(rankAttack)));
     }
 
     function _bootyPoints(uint256[] memory tokenIds) private view returns (uint256 points) {
+        points = 1;
         for (uint256 i; i < tokenIds.length; ++i) {
             uint8 level = Cards.get(tokenIds[i]).level;
-            points += level ** 2;
+            points *= level;
         }
     }
 
     function _maxBootyPointsDiff(uint256 cards) private view returns (uint256) {
-        return (((GameConfigs.latest().maxLevel) ** 2) - 1) * cards;
+        uint8 maxLevel = GameConfigs.latest().maxLevel;
+        return uint256(maxLevel) ** cards - 1;
     }
 
     function finalize(Attack_ storage self, AttackResult result) internal {

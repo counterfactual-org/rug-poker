@@ -208,7 +208,8 @@ library Cards {
     }
 
     function shares(Card storage self) internal view returns (uint256) {
-        return self.level;
+        uint8 level = self.level;
+        return level * level;
     }
 
     function assertAvailable(Card storage self, address owner) internal view {
