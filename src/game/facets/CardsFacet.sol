@@ -28,10 +28,10 @@ contract CardsFacet is BaseGameFacet {
         s = new bytes4[](11);
         s[0] = this.getCard.selector;
         s[1] = this.cardDurability.selector;
-        s[2] = this.cardRank.selector;
-        s[3] = this.cardSuit.selector;
-        s[4] = this.cardLevel.selector;
-        s[5] = this.cardShares.selector;
+        s[2] = this.cardPower.selector;
+        s[3] = this.cardRank.selector;
+        s[4] = this.cardSuit.selector;
+        s[5] = this.cardLevel.selector;
         s[6] = this.addCard.selector;
         s[7] = this.removeCard.selector;
         s[8] = this.burnCard.selector;
@@ -48,6 +48,11 @@ contract CardsFacet is BaseGameFacet {
         return card.initialized() ? card.durability : Cards.deriveDurability(tokenId);
     }
 
+    function cardPower(uint256 tokenId) external view returns (uint32) {
+        Card storage card = Cards.get(tokenId);
+        return card.initialized() ? card.power : Cards.derivePower(tokenId);
+    }
+
     function cardRank(uint256 tokenId) external view returns (uint8) {
         Card storage card = Cards.get(tokenId);
         return card.initialized() ? card.rank : Cards.deriveRank(tokenId);
@@ -60,10 +65,6 @@ contract CardsFacet is BaseGameFacet {
 
     function cardLevel(uint256 tokenId) external view returns (uint256) {
         return Cards.get(tokenId).level;
-    }
-
-    function cardShares(uint256 tokenId) external view returns (uint256) {
-        return Cards.get(tokenId).shares();
     }
 
     function addCard(uint256 tokenId) external {
@@ -81,7 +82,7 @@ contract CardsFacet is BaseGameFacet {
         GameConfigs.erc721().transferFrom(msg.sender, address(this), tokenId);
 
         player.incrementCards();
-        player.incrementShares(card.shares());
+        player.incrementShares(card.power);
         player.updateLastDefendedAt();
 
         emit AddCard(msg.sender, tokenId);
@@ -102,7 +103,7 @@ contract CardsFacet is BaseGameFacet {
         player.decrementCards();
         // if it's wornOut, decrementShares was already called in card.spend() so we don't
         if (!card.wornOut()) {
-            player.decrementShares(card.shares());
+            player.decrementShares(card.power);
         }
 
         GameConfigs.erc721().transferFrom(address(this), msg.sender, tokenId);
@@ -123,7 +124,7 @@ contract CardsFacet is BaseGameFacet {
         card.remove();
 
         player.decrementCards();
-        player.decrementShares(card.shares());
+        player.decrementShares(card.power);
 
         GameConfigs.nft().burn(tokenId);
 

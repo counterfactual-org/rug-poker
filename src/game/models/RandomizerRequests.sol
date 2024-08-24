@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import { Attack_, GameStorage, RandomizerRequest, RequestAction } from "../GameStorage.sol";
 import { Attacks } from "../models/Attacks.sol";
+import { Random } from "../models/Random.sol";
 import { IRandomizer } from "src/interfaces/IRandomizer.sol";
 
 library RandomizerRequests {
@@ -23,8 +24,8 @@ library RandomizerRequests {
         if (action == RequestAction.Attack) {
             if (s.staging) {
                 // use psuedo-random value in staging env
-                bytes32 value = keccak256(abi.encodePacked(id, block.number, block.timestamp));
-                Attacks.get(id).onResolve(value);
+                Random.set(keccak256(abi.encodePacked(id, block.number, block.timestamp)));
+                Attacks.get(id).onResolve();
             } else {
                 address _randomizer = s.randomizer;
                 uint256 _randomizerGasLimit = s.randomizerGasLimit;

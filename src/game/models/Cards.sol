@@ -23,6 +23,7 @@ import {
 import { Card, GameStorage, Player, RandomizerRequest, RequestAction } from "../GameStorage.sol";
 import { GameConfig, GameConfigs } from "./GameConfigs.sol";
 import { Players } from "./Players.sol";
+import { Random } from "./Random.sol";
 import { RandomizerRequests } from "./RandomizerRequests.sol";
 import { Rewards } from "./Rewards.sol";
 import { IEvaluator } from "src/interfaces/IEvaluator.sol";
@@ -34,7 +35,7 @@ library Cards {
     using RandomizerRequests for RandomizerRequest;
 
     uint8 constant FIELD_DURABILITY = 0;
-    uint8 constant FIELD_DURATION = 1;
+    uint8 constant FIELD_POWER = 1;
     uint8 constant FIELD_RANK = 2;
     uint8 constant FIELD_SUIT = 3;
     uint8 constant MAX_CARD_VALUE = 52;
@@ -77,11 +78,9 @@ library Cards {
     function evaluateHands(
         uint256[] memory attackingTokenIds,
         uint256[] memory defendingTokenIds,
-        uint8[] memory defendingJokerCards,
-        bytes32 random
+        uint8[] memory defendingJokerCards
     )
         internal
-        view
         returns (
             IEvaluator.HandRank handAttack,
             uint256 rankAttack,
@@ -106,7 +105,7 @@ library Cards {
             defendingCards[i] = rankD * 4 + suitD;
         }
         for (uint256 i; i < COMMUNITY_CARDS; ++i) {
-            uint8 card = uint8(random[i]) % MAX_CARD_VALUE;
+            uint8 card = Random.draw(0, MAX_CARD_VALUE);
             attackingCards[HOLE_CARDS + i] = card;
             defendingCards[HOLE_CARDS + i] = card;
         }
@@ -135,7 +134,7 @@ library Cards {
         self.tokenId = tokenId;
         self.owner = owner;
         self.durability = deriveDurability(tokenId);
-        self.duration = deriveDuration(tokenId);
+        self.power = derivePower(tokenId);
         self.rank = deriveRank(tokenId);
         self.suit = deriveSuit(tokenId);
         self.level = 1;
@@ -161,7 +160,7 @@ library Cards {
     }
 
     function durationElapsed(Card storage self) internal view returns (bool) {
-        return self.lastAddedAt + self.duration < block.timestamp;
+        return self.lastAddedAt + GameConfigs.latest().minDuration < block.timestamp;
     }
 
     function deriveDurability(uint256 tokenId) internal view returns (uint8) {
@@ -173,13 +172,14 @@ library Cards {
         return c.minDurability + (uint8(data[FIELD_DURABILITY]) % (c.maxDurability - c.minDurability));
     }
 
-    function deriveDuration(uint256 tokenId) internal view returns (uint32) {
+    function derivePower(uint256 tokenId) internal view returns (uint32) {
         GameConfig memory c = GameConfigs.latest();
         INFT nft = GameConfigs.nft();
-        if (INFTMinter(nft.minter()).isAirdrop(tokenId)) return c.maxDuration;
+        if (INFTMinter(nft.minter()).isAirdrop(tokenId)) return c.minPower;
 
         bytes32 data = nft.dataOf(tokenId);
-        return c.minDuration + (uint8(data[FIELD_DURATION]) % (c.maxDuration - c.minDuration));
+        uint32 range = c.maxPower - c.minPower;
+        return c.minPower + (range * uint8(data[FIELD_POWER]) / 256) % range;
     }
 
     function deriveRank(uint256 tokenId) internal view returns (uint8) {
@@ -207,11 +207,6 @@ library Cards {
         return uint8(data[FIELD_SUIT]) % 4;
     }
 
-    function shares(Card storage self) internal view returns (uint256) {
-        uint8 level = self.level;
-        return level * level;
-    }
-
     function assertAvailable(Card storage self, address owner) internal view {
         uint256 tokenId = self.tokenId;
         if (!added(self)) revert CardNotAdded(tokenId);
@@ -235,8 +230,7 @@ library Cards {
         address owner = self.owner;
         self.owner = address(0);
 
-        uint256 _shares = shares(self);
-        Rewards.claim(owner, _shares);
+        Rewards.claim(owner, self.power);
     }
 
     function spend(Card storage self) internal {
@@ -246,7 +240,7 @@ library Cards {
         self.durability = durability - 1;
 
         if (durability == 1) {
-            Players.get(self.owner).decrementShares(shares(self));
+            Players.get(self.owner).decrementShares(self.power);
         }
     }
 
@@ -255,7 +249,7 @@ library Cards {
         if (from != to) {
             self.owner = to;
 
-            uint256 _shares = shares(self);
+            uint256 _shares = self.power;
             Players.get(from).decrementShares(_shares);
             Players.get(to).incrementShares(_shares);
 
@@ -264,10 +258,11 @@ library Cards {
     }
 
     function gainXP(Card storage self, uint32 delta) internal {
-        uint8 maxLevel = GameConfigs.latest().maxLevel;
+        GameConfig memory c = GameConfigs.latest();
+        uint8 maxLevel = c.maxLevel;
         uint8 level = self.level;
+        uint32 power = self.power;
         uint32 xp = self.xp;
-        uint256 up;
         uint256 tokenId = self.tokenId;
 
         while (level < maxLevel) {
@@ -275,8 +270,8 @@ library Cards {
             if (xp + delta >= max) {
                 delta -= (max - xp);
                 level += 1;
+                power = power * (100 + Random.draw(c.minPowerUpPercentage, c.maxPowerUpPercentage)) / 100;
                 xp = 0;
-                up += 1;
 
                 emit LevelUp(tokenId, level);
             } else {
@@ -284,13 +279,15 @@ library Cards {
                 break;
             }
         }
+        uint32 powerUp = power - self.power;
         self.level = level;
+        self.power = power;
         self.xp = xp;
 
-        if (up > 0) {
+        if (powerUp > 0) {
             Player storage player = Players.get(self.owner);
             player.checkpoint();
-            player.incrementShares(up);
+            player.incrementShares(powerUp);
         }
     }
 

@@ -45,6 +45,9 @@ contract TokenURIRendererV1 is ITokenURIRenderer {
         attrs[0] = TokenAttr(TokenAttrType.String, "suit", _suit(IGame(game).cardSuit(tokenId)));
         attrs[1] = TokenAttr(TokenAttrType.String, "rank", _rank(IGame(game).cardRank(tokenId)));
         attrs[2] = TokenAttr(TokenAttrType.String, "level", uint256(IGame(game).cardLevel(tokenId)).toString());
+        attrs[3] = TokenAttr(TokenAttrType.String, "power", uint256(IGame(game).cardPower(tokenId)).toString());
+        attrs[4] =
+            TokenAttr(TokenAttrType.String, "durability", uint256(IGame(game).cardDurability(tokenId)).toString());
         string memory name = string.concat("Poker Card #", tokenId.toString());
         string memory description = string.concat("Rug.poker: Mint, Rug and Win!");
         bytes memory svg = ISvgRenderer(svgRenderer).render(tokenId);

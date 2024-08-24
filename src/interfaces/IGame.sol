@@ -8,6 +8,8 @@ interface IGame {
 
     function cardDurability(uint256 tokenId) external view returns (uint8);
 
+    function cardPower(uint256 tokenId) external view returns (uint8);
+
     function cardLevel(uint256 tokenId) external view returns (uint8);
 
     function checkpoint() external;

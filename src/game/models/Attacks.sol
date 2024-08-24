@@ -6,6 +6,7 @@ import { AttackResult, Attack_, GameStorage } from "../GameStorage.sol";
 import { Card, Cards } from "./Cards.sol";
 import { GameConfig, GameConfigs } from "./GameConfigs.sol";
 import { Player, Players } from "./Players.sol";
+import { Random } from "./Random.sol";
 import { Rewards } from "./Rewards.sol";
 import { IEvaluator } from "src/interfaces/IEvaluator.sol";
 import { ArrayLib } from "src/libraries/ArrayLib.sol";
@@ -132,33 +133,32 @@ library Attacks {
         }
     }
 
-    function onResolve(Attack_ storage self, bytes32 value) internal {
+    function onResolve(Attack_ storage self) internal {
         Player storage attacker = Players.get(self.attacker);
 
         attacker.checkpoint();
-        attacker.increaseBogoRandomly(value);
+        attacker.increaseBogoRandomly();
         Players.get(self.defender).checkpoint();
 
-        AttackResult result = determineAttackResult(self, value);
+        AttackResult result = determineAttackResult(self);
         finalize(self, result);
     }
 
-    function determineAttackResult(Attack_ storage self, bytes32 seed) internal returns (AttackResult result) {
+    function determineAttackResult(Attack_ storage self) internal returns (AttackResult result) {
         GameStorage storage s = gameStorage();
 
-        bytes32 random = keccak256(abi.encodePacked(seed, block.number, block.timestamp));
         uint256 id = self.id;
         uint256[] memory attackingTokenIds = s.attackingTokenIds[id];
         uint256[] memory defendingTokenIds = s.defendingTokenIds[id];
         (IEvaluator.HandRank handAttack, uint256 rankAttack, IEvaluator.HandRank handDefense, uint256 rankDefense) =
-            Cards.evaluateHands(attackingTokenIds, defendingTokenIds, s.defendingJokerCards[id], random);
+            Cards.evaluateHands(attackingTokenIds, defendingTokenIds, s.defendingJokerCards[id]);
 
         result = AttackResult.Draw;
         if (rankAttack < rankDefense) {
             _processSuccess(self.attacker, self.defender, rankAttack, rankDefense, attackingTokenIds, defendingTokenIds);
             result = AttackResult.Success;
         } else if (rankAttack > rankDefense) {
-            _processFail(self.defender, rankAttack, rankDefense, attackingTokenIds, defendingTokenIds, random);
+            _processFail(self.defender, rankAttack, rankDefense, attackingTokenIds, defendingTokenIds);
             result = AttackResult.Fail;
         }
         self.result = result;
@@ -202,8 +202,7 @@ library Attacks {
         uint256 rankAttack,
         uint256 rankDefense,
         uint256[] memory attackingTokenIds,
-        uint256[] memory defendingTokenIds,
-        bytes32 random
+        uint256[] memory defendingTokenIds
     ) private {
         uint256 cards = attackingTokenIds.length;
         uint256 attackBootyPoints = _bootyPoints(attackingTokenIds);
@@ -212,7 +211,7 @@ library Attacks {
             ? 1
             : (defenseBootyPoints - attackBootyPoints) * cards / _maxBootyPointsDiff(cards) + 1;
         for (uint256 i; i < bootyCards; ++i) {
-            uint256 index = uint256(uint8(random[(COMMUNITY_CARDS + i) % 32])) % cards;
+            uint256 index = uint256(Random.draw(0, uint8(cards)));
             uint256 tokenId = attackingTokenIds[index];
             Cards.get(tokenId).move(defender);
         }
@@ -224,16 +223,14 @@ library Attacks {
     }
 
     function _bootyPoints(uint256[] memory tokenIds) private view returns (uint256 points) {
-        points = 1;
         for (uint256 i; i < tokenIds.length; ++i) {
-            uint8 level = Cards.get(tokenIds[i]).level;
-            points *= level;
+            points += Cards.get(tokenIds[i]).power;
         }
     }
 
     function _maxBootyPointsDiff(uint256 cards) private view returns (uint256) {
-        uint8 maxLevel = GameConfigs.latest().maxLevel;
-        return uint256(maxLevel) ** cards - 1;
+        GameConfig memory c = GameConfigs.latest();
+        return uint256(c.maxPower) * cards - uint256(c.minPower) * cards;
     }
 
     function finalize(Attack_ storage self, AttackResult result) internal {

@@ -16,7 +16,6 @@ library GameConfigs {
     error InvalidNumber();
     error InvalidPeriod();
     error InvalidPercentage();
-    error InvalidBootyPercentages();
     error InvalidAttackFees();
 
     function gameStorage() internal pure returns (GameStorage storage s) {
@@ -80,10 +79,13 @@ library GameConfigs {
         if (c.maxJokers == 0 || c.maxJokers > HOLE_CARDS_SMALL) revert InvalidNumber();
         if (c.maxAttacks == 0) revert InvalidNumber();
         if (c.minBootyPercentage >= c.maxBootyPercentage || c.maxBootyPercentage >= 100) {
-            revert InvalidBootyPercentages();
+            revert InvalidPercentage();
         }
         if (c.minDurability == 0 || c.maxDurability <= c.minDurability) revert InvalidNumber();
         if (c.minDuration < 1 days) revert InvalidPeriod();
+        if (c.minPowerUpPercentage >= c.maxPowerUpPercentage || c.maxPowerUpPercentage >= 100) {
+            revert InvalidPercentage();
+        }
         if (c.bogoPercentage > 100) revert InvalidPercentage();
         if (c.attackPeriod < 1 hours) revert InvalidPeriod();
 

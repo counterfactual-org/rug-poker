@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import { Attack_, Attacks } from "../models/Attacks.sol";
 import { Card, Cards } from "../models/Cards.sol";
 import { Player, Players } from "../models/Players.sol";
+import { Random } from "../models/Random.sol";
 import { RandomizerRequest, RandomizerRequests, RequestAction } from "../models/RandomizerRequests.sol";
 import { BaseGameFacet } from "./BaseGameFacet.sol";
 import { IRandomizerCallback } from "src/interfaces/IRandomizerCallback.sol";
@@ -32,8 +33,10 @@ contract RandomizerFacet is BaseGameFacet, IRandomizerCallback {
         RandomizerRequest memory request = s.pendingRandomizerRequests[randomizerId];
         delete s.pendingRandomizerRequests[randomizerId];
 
+        Random.set(value);
+
         if (request.action == RequestAction.Attack) {
-            Attacks.get(request.id).onResolve(value);
+            Attacks.get(request.id).onResolve();
         } else {
             revert InvalidRandomizerId();
         }

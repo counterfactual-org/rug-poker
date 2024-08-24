@@ -5,6 +5,7 @@ import { Card, GameStorage, Player } from "../GameStorage.sol";
 import { isValidUsername } from "../utils/StringUtils.sol";
 import { Cards } from "./Cards.sol";
 import { GameConfigs } from "./GameConfigs.sol";
+import { Random } from "./Random.sol";
 import { Rewards } from "./Rewards.sol";
 import { INFT } from "src/interfaces/INFT.sol";
 import { INFTMinter } from "src/interfaces/INFTMinter.sol";
@@ -117,10 +118,9 @@ library Players {
         }
     }
 
-    function increaseBogoRandomly(Player storage self, bytes32 seed) internal {
+    function increaseBogoRandomly(Player storage self) internal {
         if (self.hasAttacked) {
-            bytes32 random = keccak256(abi.encodePacked(seed, block.number, block.timestamp));
-            if (uint8(random[uint256(random) % 32]) % 100 < GameConfigs.latest().bogoPercentage) {
+            if (Random.draw(0, 100) < GameConfigs.latest().bogoPercentage) {
                 increaseBogo(self);
             }
         } else {
