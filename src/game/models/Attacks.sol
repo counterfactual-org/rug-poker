@@ -174,8 +174,7 @@ library Attacks {
         uint256[] memory attackingTokenIds,
         uint256[] memory defendingTokenIds
     ) private {
-        uint8 percentage =
-            _bootyPercentage(_bootyPoints(attackingTokenIds), _bootyPoints(defendingTokenIds), attackingTokenIds.length);
+        uint8 percentage = _bootyPercentage(_bootyPoints(attackingTokenIds), _bootyPoints(defendingTokenIds));
         Rewards.moveAccReward(defender, attacker, percentage);
 
         Players.get(attacker).incrementPoints(rankDefense - rankAttack);
@@ -184,16 +183,13 @@ library Attacks {
         Cards.gainXPBatch(defendingTokenIds, (MAX_RANK - uint32(rankAttack)) / 10);
     }
 
-    function _bootyPercentage(uint256 attackBootyPoints, uint256 defenseBootyPoints, uint256 cards)
-        private
-        view
-        returns (uint8)
-    {
+    function _bootyPercentage(uint256 attackBootyPoints, uint256 defenseBootyPoints) private view returns (uint8) {
         GameConfig memory c = GameConfigs.latest();
         if (defenseBootyPoints >= attackBootyPoints) return c.minBootyPercentage;
         return uint8(
-            (attackBootyPoints - defenseBootyPoints) * (c.maxBootyPercentage - c.minBootyPercentage)
-                / _maxBootyPointsDiff(cards)
+            c.minBootyPercentage
+                + (attackBootyPoints - defenseBootyPoints) * (c.maxBootyPercentage - c.minBootyPercentage)
+                    / attackBootyPoints
         );
     }
 
@@ -207,13 +203,13 @@ library Attacks {
         uint256 cards = attackingTokenIds.length;
         uint256 attackBootyPoints = _bootyPoints(attackingTokenIds);
         uint256 defenseBootyPoints = _bootyPoints(defendingTokenIds);
-        uint256 bootyCards = (defenseBootyPoints < attackBootyPoints)
-            ? 1
-            : (defenseBootyPoints - attackBootyPoints) * cards / _maxBootyPointsDiff(cards) + 1;
-        for (uint256 i; i < bootyCards; ++i) {
-            uint256 index = uint256(Random.draw(0, uint8(cards)));
-            uint256 tokenId = attackingTokenIds[index];
-            Cards.get(tokenId).move(defender);
+        if (defenseBootyPoints > attackBootyPoints) {
+            uint256 bootyCards = (defenseBootyPoints - attackBootyPoints) * cards / defenseBootyPoints;
+            for (uint256 i; i < bootyCards; ++i) {
+                uint256 index = uint256(Random.draw(0, uint8(cards)));
+                uint256 tokenId = attackingTokenIds[index];
+                Cards.get(tokenId).move(defender);
+            }
         }
 
         Players.get(defender).incrementPoints(rankAttack - rankDefense);
@@ -226,11 +222,6 @@ library Attacks {
         for (uint256 i; i < tokenIds.length; ++i) {
             points += Cards.get(tokenIds[i]).power;
         }
-    }
-
-    function _maxBootyPointsDiff(uint256 cards) private view returns (uint256) {
-        GameConfig memory c = GameConfigs.latest();
-        return uint256(c.maxPower) * cards - uint256(c.minPower) * cards;
     }
 
     function finalize(Attack_ storage self, AttackResult result) internal {
