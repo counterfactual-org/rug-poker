@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.24;
 
-import { COMMUNITY_CARDS } from "../GameConstants.sol";
 import { AttackResult, Attack_, GameStorage } from "../GameStorage.sol";
 import { Card, Cards } from "./Cards.sol";
 import { GameConfig, GameConfigs } from "./GameConfigs.sol";

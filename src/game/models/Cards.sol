@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {
-    COMMUNITY_CARDS,
+    CARDS,
     HOLE_CARDS,
     HOLE_CARDS_SMALL,
     RANK_ACE,
@@ -88,29 +88,27 @@ library Cards {
             uint256 rankDefense
         )
     {
-        uint256 cards = attackingTokenIds.length;
-        uint256[] memory attackingCards = new uint256[](cards + COMMUNITY_CARDS);
-        uint256[] memory defendingCards = new uint256[](cards + COMMUNITY_CARDS);
+        uint256 holeCards = attackingTokenIds.length;
+        uint256[] memory attackingCards = new uint256[](CARDS);
+        uint256[] memory defendingCards = new uint256[](CARDS);
         uint256 jokersLength = defendingJokerCards.length;
-        for (uint256 i; i < cards; ++i) {
-            uint8 rankA = Cards.get(attackingTokenIds[i]).rank;
-            uint8 suitA = Cards.get(attackingTokenIds[i]).suit;
-            attackingCards[i] = rankA * 4 + suitA;
+        for (uint256 i; i < holeCards; ++i) {
+            Card storage attackingCard = Cards.get(attackingTokenIds[i]);
+            attackingCards[i] = attackingCard.rank * 4 + attackingCard.suit;
             if (i < jokersLength) {
                 defendingCards[i] = defendingJokerCards[i];
                 continue;
             }
-            uint8 rankD = Cards.get(defendingTokenIds[i]).rank;
-            uint8 suitD = Cards.get(defendingTokenIds[i]).suit;
-            defendingCards[i] = rankD * 4 + suitD;
+            Card storage defendingCard = Cards.get(defendingTokenIds[i]);
+            defendingCards[i] = defendingCard.rank * 4 + defendingCard.suit;
         }
-        for (uint256 i; i < COMMUNITY_CARDS; ++i) {
+        for (uint256 i; i < CARDS - holeCards; ++i) {
             uint8 card = Random.draw(0, MAX_CARD_VALUE);
-            attackingCards[HOLE_CARDS + i] = card;
-            defendingCards[HOLE_CARDS + i] = card;
+            attackingCards[holeCards + i] = card;
+            defendingCards[holeCards + i] = card;
         }
 
-        IEvaluator evaluator = cards == HOLE_CARDS_SMALL ? GameConfigs.evaluator5() : GameConfigs.evaluator7();
+        IEvaluator evaluator = GameConfigs.evaluator7();
         (handAttack, rankAttack) = evaluator.handRank(attackingCards);
         (handDefense, rankDefense) = evaluator.handRank(defendingCards);
     }
