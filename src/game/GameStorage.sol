@@ -35,8 +35,9 @@ struct GameStorage {
     mapping(uint256 attackId => uint8[]) defendingJokerCards;
     // randomizer requests
     mapping(uint256 randomizerId => RandomizerRequest) pendingRandomizerRequests;
-    // random value drawer
-    RandomValue random;
+    // random
+    uint256 randomValueId;
+    mapping(uint256 id => RandomValue) randomValues;
 }
 
 struct GameConfig {

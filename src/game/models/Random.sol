@@ -14,14 +14,16 @@ library Random {
 
     function set(bytes32 seed) internal returns (RandomValue storage random) {
         GameStorage storage s = gameStorage();
-        s.random = RandomValue(keccak256(abi.encodePacked(seed, block.number, block.timestamp)), 0);
-        return s.random;
+        uint256 randomValueId = s.randomValueId++;
+        s.randomValues[randomValueId] = RandomValue(keccak256(abi.encodePacked(seed, block.number, block.timestamp)), 0);
+        return s.randomValues[randomValueId];
     }
 
     function draw(uint8 min, uint8 max) internal returns (uint8 value) {
         if (max <= min) revert InvalidMinMax();
 
-        RandomValue storage random = gameStorage().random;
+        GameStorage storage s = gameStorage();
+        RandomValue storage random = s.randomValues[s.randomValueId];
         uint256 offset = random.offset;
         value = min + uint8(random.seed[offset]) % (max - min);
         random.offset = (offset + 1) % 32;
