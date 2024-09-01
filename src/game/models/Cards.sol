@@ -41,7 +41,8 @@ library Cards {
     uint8 constant MAX_CARD_VALUE = 52;
 
     event MoveCard(address indexed from, address indexed to, uint256 indexed tokenId);
-    event LevelUp(uint256 tokenId, uint8 level);
+    event CardGainXP(uint256 tokenId, uint32 xp);
+    event CardLevelUp(uint256 tokenId, uint8 level);
 
     error CardNotAdded(uint256 tokenId);
     error Underuse(uint256 tokenId);
@@ -120,7 +121,7 @@ library Cards {
     }
 
     function maxXP(uint8 level) internal pure returns (uint32 xp) {
-        return 3000 * level * level;
+        return 3000 * level * level + 7000;
     }
 
     function get(uint256 tokenId) internal view returns (Card storage self) {
@@ -138,7 +139,7 @@ library Cards {
         self.level = 1;
         self.lastAddedAt = uint64(block.timestamp);
 
-        emit LevelUp(tokenId, 1);
+        emit CardLevelUp(tokenId, 1);
     }
 
     function initialized(Card storage self) internal view returns (bool) {
@@ -257,11 +258,13 @@ library Cards {
 
     function gainXP(Card storage self, uint32 delta) internal {
         GameConfig memory c = GameConfigs.latest();
-        uint8 maxLevel = c.maxLevel;
+        uint8 maxLevel = c.maxCardLevel;
         uint8 level = self.level;
         uint32 power = self.power;
         uint32 xp = self.xp;
         uint256 tokenId = self.tokenId;
+
+        emit CardGainXP(tokenId, delta);
 
         while (level < maxLevel) {
             uint32 max = maxXP(level);
@@ -271,7 +274,7 @@ library Cards {
                 power = power * (100 + Random.draw(c.minPowerUpPercentage, c.maxPowerUpPercentage)) / 100;
                 xp = 0;
 
-                emit LevelUp(tokenId, level);
+                emit CardLevelUp(tokenId, level);
             } else {
                 xp += delta;
                 break;

@@ -40,9 +40,7 @@ struct GameStorage {
 }
 
 struct GameConfig {
-    uint8 maxCards;
     uint8 maxJokers;
-    uint8 maxAttacks;
     uint8 minBootyPercentage;
     uint8 maxBootyPercentage;
     uint8 minDurability;
@@ -51,7 +49,8 @@ struct GameConfig {
     uint32 maxPower;
     uint8 minPowerUpPercentage;
     uint8 maxPowerUpPercentage;
-    uint8 maxLevel;
+    uint8 maxPlayerLevel;
+    uint8 maxCardLevel;
     uint8 bogoPercentage;
     uint32 minDuration;
     uint32 immunePeriod;
@@ -71,8 +70,11 @@ struct Player {
     address account;
     bool hasPlayed;
     bool hasAttacked;
+    uint8 level;
+    uint32 xp;
     uint64 lastDefendedAt;
     bytes32 username;
+    uint256 maxCards;
     uint256 cards;
     uint256 points;
 }

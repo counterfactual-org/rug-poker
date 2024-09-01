@@ -18,7 +18,7 @@ contract CardsFacet is BaseGameFacet {
     event RepairCard(address indexed account, uint256 indexed tokenId, uint8 durability);
     event JokerizeCard(address indexed account, uint256 indexed tokenId);
 
-    error MaxCardsStaked();
+    error ExceedingMaxCards();
     error Forbidden();
     error Underuse();
     error DurationNotElapsed();
@@ -69,7 +69,7 @@ contract CardsFacet is BaseGameFacet {
 
     function addCard(uint256 tokenId) external {
         Player storage player = Players.getOrRevert(msg.sender);
-        if (player.cards >= GameConfigs.latest().maxCards) revert MaxCardsStaked();
+        if (player.cards >= player.maxCards) revert ExceedingMaxCards();
 
         player.checkpoint();
         player.increaseBogoIfHasNotPlayed();

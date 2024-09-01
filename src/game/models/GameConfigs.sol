@@ -75,9 +75,7 @@ library GameConfigs {
     }
 
     function updateConfig(GameConfig memory c) internal {
-        if (c.maxCards == 0) revert InvalidNumber();
         if (c.maxJokers == 0 || c.maxJokers > HOLE_CARDS_SMALL) revert InvalidNumber();
-        if (c.maxAttacks == 0) revert InvalidNumber();
         if (c.minBootyPercentage >= c.maxBootyPercentage || c.maxBootyPercentage >= 100) {
             revert InvalidPercentage();
         }

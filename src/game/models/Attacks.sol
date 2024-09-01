@@ -152,12 +152,15 @@ library Attacks {
         (IEvaluator.HandRank handAttack, uint256 rankAttack, IEvaluator.HandRank handDefense, uint256 rankDefense) =
             Cards.evaluateHands(attackingTokenIds, defendingTokenIds, s.defendingJokerCards[id]);
 
+        (address attacker, address defender) = (self.attacker, self.defender);
         result = AttackResult.Draw;
         if (rankAttack < rankDefense) {
-            _processSuccess(self.attacker, self.defender, rankAttack, rankDefense, attackingTokenIds, defendingTokenIds);
+            _processSuccess(attacker, defender, rankAttack, rankDefense, attackingTokenIds, defendingTokenIds);
+            _increaseXPs(attacker, defender, rankAttack, rankDefense, attackingTokenIds, defendingTokenIds);
             result = AttackResult.Success;
         } else if (rankAttack > rankDefense) {
-            _processFail(self.defender, rankAttack, rankDefense, attackingTokenIds, defendingTokenIds);
+            _processFail(defender, rankAttack, rankDefense, attackingTokenIds, defendingTokenIds);
+            _increaseXPs(defender, attacker, rankDefense, rankAttack, defendingTokenIds, attackingTokenIds);
             result = AttackResult.Fail;
         }
         self.result = result;
@@ -175,11 +178,7 @@ library Attacks {
     ) private {
         uint8 percentage = _bootyPercentage(_bootyPoints(attackingTokenIds), _bootyPoints(defendingTokenIds));
         Rewards.moveAccReward(defender, attacker, percentage);
-
         Players.get(attacker).incrementPoints(rankDefense - rankAttack);
-
-        Cards.gainXPBatch(attackingTokenIds, (MAX_RANK - uint32(rankDefense)));
-        Cards.gainXPBatch(defendingTokenIds, (MAX_RANK - uint32(rankAttack)) / 10);
     }
 
     function _bootyPercentage(uint256 attackBootyPoints, uint256 defenseBootyPoints) private view returns (uint8) {
@@ -210,17 +209,29 @@ library Attacks {
                 Cards.get(tokenId).move(defender);
             }
         }
-
         Players.get(defender).incrementPoints(rankAttack - rankDefense);
-
-        Cards.gainXPBatch(attackingTokenIds, (MAX_RANK - uint32(rankDefense)) / 10);
-        Cards.gainXPBatch(defendingTokenIds, (MAX_RANK - uint32(rankAttack)));
     }
 
     function _bootyPoints(uint256[] memory tokenIds) private view returns (uint256 points) {
         for (uint256 i; i < tokenIds.length; ++i) {
             points += Cards.get(tokenIds[i]).power;
         }
+    }
+
+    function _increaseXPs(
+        address winner,
+        address loser,
+        uint256 rankWinner,
+        uint256 rankLoser,
+        uint256[] memory winnerTokenIds,
+        uint256[] memory loserTokenIds
+    ) private {
+        uint32 xpWinner = MAX_RANK - uint32(rankWinner);
+        uint32 xpLoser = (MAX_RANK - uint32(rankLoser)) / 4;
+        Players.get(winner).gainXP(xpWinner);
+        Players.get(loser).gainXP(xpLoser);
+        Cards.gainXPBatch(winnerTokenIds, xpWinner);
+        Cards.gainXPBatch(loserTokenIds, xpLoser);
     }
 
     function finalize(Attack_ storage self, AttackResult result) internal {

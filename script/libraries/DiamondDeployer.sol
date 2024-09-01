@@ -59,9 +59,7 @@ library DiamondDeployer {
 
     function _gameConfig() private pure returns (GameConfig memory) {
         return GameConfig({
-            maxCards: 30,
             maxJokers: 1,
-            maxAttacks: 5,
             minBootyPercentage: 10,
             maxBootyPercentage: 90,
             minDurability: 3,
@@ -71,7 +69,8 @@ library DiamondDeployer {
             maxPower: 100_000,
             minPowerUpPercentage: 3,
             maxPowerUpPercentage: 33,
-            maxLevel: 10,
+            maxPlayerLevel: 50,
+            maxCardLevel: 10,
             bogoPercentage: 10,
             immunePeriod: 1 hours,
             attackPeriod: 23 hours

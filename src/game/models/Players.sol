@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import { Card, GameStorage, Player } from "../GameStorage.sol";
 import { isValidUsername } from "../utils/StringUtils.sol";
 import { Cards } from "./Cards.sol";
-import { GameConfigs } from "./GameConfigs.sol";
+import { GameConfig, GameConfigs } from "./GameConfigs.sol";
 import { Random } from "./Random.sol";
 import { Rewards } from "./Rewards.sol";
 import { INFT } from "src/interfaces/INFT.sol";
@@ -15,6 +15,8 @@ library Players {
     using ArrayLib for uint256[];
     using Cards for Card;
 
+    event PlayerGainXP(address indexed account, uint32 xp);
+    event PlayerLevelUp(address indexed account, uint8 level);
     event AdjustCards(address indexed account, uint256 cards);
     event AdjustPoints(address indexed account, uint256 points);
     event AdjustShares(address indexed account, uint256 sharesSum, uint256 shares);
@@ -28,7 +30,6 @@ library Players {
     error InvalidUsername();
     error DuplicateUsername();
     error AlreadyUnderAttack();
-    error AttackingMax();
     error InsufficientCards();
     error InsufficientPoints();
     error InsufficientItems();
@@ -38,6 +39,10 @@ library Players {
         assembly {
             s.slot := 0
         }
+    }
+
+    function maxXP(uint8 level) internal pure returns (uint32 xp) {
+        return 1000 * level * level;
     }
 
     function getOrRevert(address account) internal view returns (Player storage self) {
@@ -52,7 +57,11 @@ library Players {
     function init(address account, bytes32 username) internal returns (Player storage self) {
         self = get(account);
         self.account = account;
+        self.level = 1;
+        self.maxCards = 5;
         updateUsername(self, username);
+
+        emit PlayerLevelUp(account, 1);
     }
 
     function initialized(Player storage self) internal view returns (bool) {
@@ -95,8 +104,6 @@ library Players {
         GameStorage storage s = gameStorage();
 
         address account = self.account;
-        if (s.outgoingAttackIds[account].length >= GameConfigs.latest().maxAttacks) revert AttackingMax();
-
         s.outgoingAttackIds[account].push(attackId);
 
         emit AddOutgoingAttack(account, attackId);
@@ -191,6 +198,33 @@ library Players {
         s.rewardDebt[account] = _shares * s.accRewardPerShare / 1e12;
 
         emit AdjustShares(account, sharesSum, _shares);
+    }
+
+    function gainXP(Player storage self, uint32 delta) internal {
+        GameConfig memory c = GameConfigs.latest();
+        uint8 maxLevel = c.maxPlayerLevel;
+        uint8 level = self.level;
+        uint32 xp = self.xp;
+        address account = self.account;
+
+        emit PlayerGainXP(account, delta);
+
+        while (level < maxLevel) {
+            uint32 max = maxXP(level);
+            if (xp + delta >= max) {
+                delta -= (max - xp);
+                level += 1;
+                xp = 0;
+
+                emit PlayerLevelUp(account, level);
+            } else {
+                xp += delta;
+                break;
+            }
+        }
+        self.level = level;
+        self.xp = xp;
+        self.maxCards = 3 + level * 2;
     }
 
     function checkpoint(Player storage self) internal {
