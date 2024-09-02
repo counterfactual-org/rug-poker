@@ -23,7 +23,7 @@ struct GameStorage {
     // players
     mapping(bytes32 username => address) usernames;
     mapping(address account => Player) players;
-    mapping(address account => uint256) incomingAttackId;
+    mapping(address account => uint256[]) incomingAttackIds;
     mapping(address account => uint256[]) outgoingAttackIds;
     // cards
     mapping(uint256 tokenId => Card) cards;

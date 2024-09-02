@@ -21,7 +21,8 @@ library Players {
     event AdjustPoints(address indexed account, uint256 points);
     event AdjustShares(address indexed account, uint256 sharesSum, uint256 shares);
     event UpdateUsername(address indexed account, bytes32 indexed username);
-    event UpdateIncomingAttack(address indexed account, uint256 attackId);
+    event AddIncomingAttack(address indexed account, uint256 attackId);
+    event RemoveIncomingAttack(address indexed account, uint256 attackId);
     event AddOutgoingAttack(address indexed account, uint256 attackId);
     event RemoveOutgoingAttack(address indexed account, uint256 attackId);
     event CheckpointPlayer(address indexed account);
@@ -29,6 +30,7 @@ library Players {
     error NotPlayer();
     error InvalidUsername();
     error DuplicateUsername();
+    error ExceedingMaxAttacks();
     error AlreadyUnderAttack();
     error InsufficientCards();
     error InsufficientPoints();
@@ -89,15 +91,24 @@ library Players {
         self.lastDefendedAt = uint64(block.timestamp);
     }
 
-    function updateIncomingAttack(Player storage self, uint256 attackId) internal {
+    function addIncomingAttack(Player storage self, uint256 attackId) internal {
         GameStorage storage s = gameStorage();
 
         address account = self.account;
-        if (attackId > 0 && s.incomingAttackId[account] > 0) revert AlreadyUnderAttack();
+        if (s.incomingAttackIds[account].length >= self.maxCards / 5) revert ExceedingMaxAttacks();
 
-        s.incomingAttackId[account] = attackId;
+        s.incomingAttackIds[account].push(attackId);
 
-        emit UpdateIncomingAttack(account, attackId);
+        emit AddIncomingAttack(account, attackId);
+    }
+
+    function removeIncomingAttack(Player storage self, uint256 attackId) internal {
+        GameStorage storage s = gameStorage();
+
+        address account = self.account;
+        s.incomingAttackIds[account].remove(attackId);
+
+        emit RemoveIncomingAttack(account, attackId);
     }
 
     function addOutgoingAttack(Player storage self, uint256 attackId) internal {

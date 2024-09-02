@@ -259,6 +259,6 @@ library Attacks {
         delete s.defendingTokenIds[id];
         delete s.defendingJokerCards[id];
         Players.get(attacker).removeOutgoingAttack(id);
-        d.updateIncomingAttack(0);
+        d.removeIncomingAttack(0);
     }
 }

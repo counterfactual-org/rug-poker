@@ -33,7 +33,7 @@ contract AttacksFacet is BaseGameFacet {
         s = new bytes4[](7);
         s[0] = this.attackingTokenIdsUsedIn.selector;
         s[1] = this.defendingTokenIdsUsedIn.selector;
-        s[2] = this.incomingAttackIdOf.selector;
+        s[2] = this.incomingAttackIdsOf.selector;
         s[3] = this.outgoingAttackIdsOf.selector;
         s[4] = this.attack.selector;
         s[5] = this.defend.selector;
@@ -52,8 +52,8 @@ contract AttacksFacet is BaseGameFacet {
         return s.defendingJokerCards[attackId];
     }
 
-    function incomingAttackIdOf(address account) external view returns (uint256) {
-        return s.incomingAttackId[account];
+    function incomingAttackIdsOf(address account) external view returns (uint256[] memory) {
+        return s.incomingAttackIds[account];
     }
 
     function outgoingAttackIdsOf(address account) external view returns (uint256[] memory) {
@@ -74,7 +74,7 @@ contract AttacksFacet is BaseGameFacet {
         Attack_ storage a = Attacks.init(msg.sender, defender, tokenIds);
         uint256 id = a.id;
         player.addOutgoingAttack(id);
-        d.updateIncomingAttack(id);
+        d.addIncomingAttack(id);
 
         emit Attack(id, msg.sender, defender, tokenIds);
     }
