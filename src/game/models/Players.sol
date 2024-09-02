@@ -28,9 +28,12 @@ library Players {
     event CheckpointPlayer(address indexed account);
 
     error NotPlayer();
+    error PlayerInitialized();
+    error PlayerImmune();
     error InvalidUsername();
     error DuplicateUsername();
     error ExceedingMaxAttacks();
+    error ExceedingMaxCards();
     error AlreadyUnderAttack();
     error InsufficientCards();
     error InsufficientPoints();
@@ -73,6 +76,14 @@ library Players {
     function isImmune(Player storage self) internal view returns (bool) {
         uint256 lastDefendedAt = self.lastDefendedAt;
         return lastDefendedAt > 0 && block.timestamp < lastDefendedAt + GameConfigs.latest().immunePeriod;
+    }
+
+    function assertNotInitialized(Player storage self) internal view {
+        if (initialized(self)) revert PlayerInitialized();
+    }
+
+    function assertNotImmune(Player storage self) internal view {
+        if (isImmune(self)) revert PlayerImmune();
     }
 
     function updateUsername(Player storage self, bytes32 username) internal {
@@ -153,6 +164,8 @@ library Players {
     }
 
     function incrementCards(Player storage self) internal {
+        if (self.cards >= self.maxCards) revert ExceedingMaxCards();
+
         uint256 cards = self.cards + 1;
         self.cards = cards;
 

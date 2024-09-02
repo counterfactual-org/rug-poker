@@ -19,12 +19,7 @@ contract AttacksFacet is BaseGameFacet {
     event ResolveAttack(uint256 indexed attackId, uint256 indexed randomizerId);
     event FinalizeAttack(uint256 indexed id);
 
-    error NotPlayer();
-    error Immune();
     error Forbidden();
-    error InvalidNumberOfCards();
-    error InvalidNumberOfJokers();
-    error InvalidJokerCard();
     error AttackResolving();
     error AttackFinalized();
     error AttackOngoing();
@@ -61,12 +56,10 @@ contract AttacksFacet is BaseGameFacet {
     }
 
     function attack(address defender, uint256[] memory tokenIds) external {
-        Player storage player = Players.get(msg.sender);
-        if (!player.initialized()) revert NotPlayer();
+        Player storage player = Players.getOrRevert(msg.sender);
 
-        Player storage d = Players.get(defender);
-        if (!d.initialized()) revert NotPlayer();
-        if (d.isImmune()) revert Immune();
+        Player storage d = Players.getOrRevert(defender);
+        d.assertNotImmune();
 
         player.checkpoint();
         d.checkpoint();

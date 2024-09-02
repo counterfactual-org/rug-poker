@@ -12,6 +12,7 @@ struct GameStorage {
     address treasury;
     uint256 configVersion;
     mapping(uint256 version => GameConfig) configs;
+    // items
     mapping(uint256 itemId => ItemEntry) itemEntries;
     // rewards
     uint256 reserve;

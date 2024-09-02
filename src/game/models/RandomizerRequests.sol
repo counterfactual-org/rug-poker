@@ -1,16 +1,22 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.24;
 
-import { Attack_, GameStorage, RandomizerRequest, RequestAction } from "../GameStorage.sol";
+import { Attack_, Card, GameStorage, RandomizerRequest, RequestAction } from "../GameStorage.sol";
 import { Attacks } from "../models/Attacks.sol";
+import { Cards } from "../models/Cards.sol";
+import { Player, Players } from "../models/Players.sol";
 import { Random } from "../models/Random.sol";
 import { IRandomizer } from "src/interfaces/IRandomizer.sol";
 
 library RandomizerRequests {
     using Attacks for Attack_;
+    using Players for Player;
+    using Cards for Card;
 
     error InsufficientFee();
     error InvalidAction();
+    error Forbidden();
+    error InvalidRandomizerId();
 
     function gameStorage() internal pure returns (GameStorage storage s) {
         assembly {
@@ -38,6 +44,23 @@ library RandomizerRequests {
             }
         } else {
             revert InvalidAction();
+        }
+    }
+
+    function onCallback(uint256 randomizerId, bytes32 value) internal {
+        GameStorage storage s = gameStorage();
+
+        if (msg.sender != s.randomizer) revert Forbidden();
+
+        RandomizerRequest memory r = s.pendingRandomizerRequests[randomizerId];
+        delete s.pendingRandomizerRequests[randomizerId];
+
+        Random.set(value);
+
+        if (r.action == RequestAction.Attack) {
+            Attacks.get(r.id).onResolve();
+        } else {
+            revert InvalidRandomizerId();
         }
     }
 }

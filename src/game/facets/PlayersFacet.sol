@@ -8,8 +8,6 @@ import { BaseGameFacet } from "./BaseGameFacet.sol";
 contract PlayersFacet is BaseGameFacet {
     using Players for Player;
 
-    error ExistentPlayer();
-
     function selectors() external pure override returns (bytes4[] memory s) {
         s = new bytes4[](7);
         s[0] = this.getPlayer.selector;
@@ -40,7 +38,7 @@ contract PlayersFacet is BaseGameFacet {
 
     function createPlayer(bytes32 username) external {
         Player storage player = Players.get(msg.sender);
-        if (player.initialized()) revert ExistentPlayer();
+        player.assertNotInitialized();
         player = Players.init(msg.sender, username);
     }
 

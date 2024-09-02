@@ -18,12 +18,6 @@ contract CardsFacet is BaseGameFacet {
     event RepairCard(address indexed account, uint256 indexed tokenId, uint8 durability);
     event JokerizeCard(address indexed account, uint256 indexed tokenId);
 
-    error ExceedingMaxCards();
-    error Forbidden();
-    error Underuse();
-    error DurationNotElapsed();
-    error WornOut();
-
     function selectors() external pure override returns (bytes4[] memory s) {
         s = new bytes4[](11);
         s[0] = this.getCard.selector;
@@ -69,7 +63,6 @@ contract CardsFacet is BaseGameFacet {
 
     function addCard(uint256 tokenId) external {
         Player storage player = Players.getOrRevert(msg.sender);
-        if (player.cards >= player.maxCards) revert ExceedingMaxCards();
 
         player.checkpoint();
         player.increaseBogoIfHasNotPlayed();
@@ -92,9 +85,7 @@ contract CardsFacet is BaseGameFacet {
         Player storage player = Players.getOrRevert(msg.sender);
 
         Card storage card = Cards.get(tokenId);
-        if (card.owner != msg.sender) revert Forbidden();
-        if (card.underuse) revert Underuse();
-        if (!card.wornOut() && card.durationElapsed()) revert DurationNotElapsed();
+        card.assertAvailable(msg.sender, false, true);
 
         player.checkpoint();
 
@@ -115,9 +106,7 @@ contract CardsFacet is BaseGameFacet {
         Player storage player = Players.getOrRevert(msg.sender);
 
         Card storage card = Cards.get(tokenId);
-        if (card.owner != msg.sender) revert Forbidden();
-        if (card.underuse) revert Underuse();
-        if (card.durability == 0) revert WornOut();
+        card.assertAvailable(msg.sender, true, false);
 
         player.checkpoint();
 
@@ -135,8 +124,7 @@ contract CardsFacet is BaseGameFacet {
         Players.getOrRevert(msg.sender);
 
         Card storage card = Cards.get(tokenId);
-        if (card.owner != msg.sender) revert Forbidden();
-        if (card.underuse) revert Underuse();
+        card.assertAvailable(msg.sender, false, false);
 
         ERC1155Lib.burn(msg.sender, ITEM_ID_REPAIR, 1);
         card.repair();
@@ -148,8 +136,7 @@ contract CardsFacet is BaseGameFacet {
         Players.getOrRevert(msg.sender);
 
         Card storage card = Cards.get(tokenId);
-        if (card.owner != msg.sender) revert Forbidden();
-        if (card.underuse) revert Underuse();
+        card.assertAvailable(msg.sender, false, false);
 
         ERC1155Lib.burn(msg.sender, ITEM_ID_JOKERIZE, 1);
         card.jokerize();

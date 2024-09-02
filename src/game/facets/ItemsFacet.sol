@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.24;
 
-import { ITEM_ID_JOKERIZE, ITEM_ID_REPAIR } from "../GameConstants.sol";
 import { ItemEntry } from "../GameStorage.sol";
 import { GameConfigs } from "../models/GameConfigs.sol";
 import { Player, Players } from "../models/Players.sol";

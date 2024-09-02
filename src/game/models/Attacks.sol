@@ -62,7 +62,7 @@ library Attacks {
 
         for (uint256 i; i < tokenIds.length; ++i) {
             Card storage card = Cards.get(tokenIds[i]);
-            card.assertAvailable(attacker);
+            card.assertAvailable(attacker, true, false);
             card.markUnderuse();
         }
 
@@ -104,7 +104,7 @@ library Attacks {
 
         for (uint256 i; i < ids.length; ++i) {
             Card storage card = Cards.get(ids[i]);
-            card.assertAvailable(defender);
+            card.assertAvailable(defender, true, false);
             card.markUnderuse();
         }
 

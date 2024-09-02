@@ -48,6 +48,7 @@ library Cards {
     error Underuse(uint256 tokenId);
     error NotCardOwner(uint256 tokenId);
     error WornOut(uint256 tokenId);
+    error DurationNotElapsed(uint256 tokenId);
     error UnableToRepair(uint256 tokenId);
     error UnableToJokerize(uint256 tokenId);
 
@@ -151,7 +152,7 @@ library Cards {
     }
 
     function wornOut(Card storage self) internal view returns (bool) {
-        return initialized(self) && self.durability == 0;
+        return self.durability == 0;
     }
 
     function isJoker(Card storage self) internal view returns (bool) {
@@ -206,12 +207,16 @@ library Cards {
         return uint8(data[FIELD_SUIT]) % 4;
     }
 
-    function assertAvailable(Card storage self, address owner) internal view {
+    function assertAvailable(Card storage self, address owner, bool assertNotWornOut, bool assertDurationElapsed)
+        internal
+        view
+    {
         uint256 tokenId = self.tokenId;
         if (!added(self)) revert CardNotAdded(tokenId);
         if (self.underuse) revert Underuse(tokenId);
         if (self.owner != owner) revert NotCardOwner(tokenId);
-        if (self.durability == 0) revert WornOut(tokenId);
+        if (assertNotWornOut && wornOut(self)) revert WornOut(tokenId);
+        if (assertDurationElapsed && !durationElapsed(self)) revert DurationNotElapsed(tokenId);
     }
 
     function markUnderuse(Card storage self) internal {
