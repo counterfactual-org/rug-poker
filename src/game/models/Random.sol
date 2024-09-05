@@ -12,7 +12,13 @@ library Random {
         }
     }
 
-    function set(bytes32 seed) internal returns (RandomValue storage random) {
+    function simulateDraw(bytes32 seed, uint256 offset, uint8 min, uint8 max) internal pure returns (uint8 value) {
+        if (max <= min) revert InvalidMinMax();
+
+        return min + uint8(seed[offset]) % (max - min);
+    }
+
+    function setSeed(bytes32 seed) internal returns (RandomValue storage random) {
         GameStorage storage s = gameStorage();
         uint256 randomValueId = s.randomValueId++;
         s.randomValues[randomValueId] = RandomValue(keccak256(abi.encodePacked(seed, block.number, block.timestamp)), 0);

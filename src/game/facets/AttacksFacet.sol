@@ -5,6 +5,7 @@ import { AttackResult, Attack_, Attacks } from "../models/Attacks.sol";
 import { Card, Cards } from "../models/Cards.sol";
 import { GameConfig, GameConfigs } from "../models/GameConfigs.sol";
 import { Player, Players } from "../models/Players.sol";
+import { Random } from "../models/Random.sol";
 import { RandomizerRequests, RequestAction } from "../models/RandomizerRequests.sol";
 import { Rewards } from "../models/Rewards.sol";
 import { BaseGameFacet } from "./BaseGameFacet.sol";
@@ -14,15 +15,10 @@ contract AttacksFacet is BaseGameFacet {
     using Cards for Card;
     using Attacks for Attack_;
 
-    event Attack(uint256 indexed id, address indexed attacker, address indexed defender, uint256[] tokenIds);
-    event Defend(uint256 indexed attackId, uint256[] tokenIds, uint256[] jokerTokenIds);
-    event ResolveAttack(uint256 indexed attackId, uint256 indexed randomizerId);
+    event Flop(uint256 indexed id, address indexed attacker, address indexed defender, uint256[] tokenIds);
+    event Submit(uint256 indexed attackId, address indexed from, uint256[] tokenIds, uint8[] jokerCards);
+    event ShowDown(uint256 indexed attackId, uint256 randomizerId);
     event FinalizeAttack(uint256 indexed id);
-
-    error Forbidden();
-    error AttackResolving();
-    error AttackFinalized();
-    error AttackOngoing();
 
     function selectors() external pure override returns (bytes4[] memory s) {
         s = new bytes4[](7);
@@ -30,9 +26,9 @@ contract AttacksFacet is BaseGameFacet {
         s[1] = this.defendingTokenIdsUsedIn.selector;
         s[2] = this.incomingAttackIdsOf.selector;
         s[3] = this.outgoingAttackIdsOf.selector;
-        s[4] = this.attack.selector;
-        s[5] = this.defend.selector;
-        s[6] = this.resolveAttack.selector;
+        s[4] = this.flop.selector;
+        s[5] = this.submit.selector;
+        s[6] = this.finalize.selector;
     }
 
     function attackingTokenIdsUsedIn(uint256 attackId) external view returns (uint256[] memory) {
@@ -55,64 +51,43 @@ contract AttacksFacet is BaseGameFacet {
         return s.outgoingAttackIds[account];
     }
 
-    function attack(address defender, uint256[] memory tokenIds) external {
+    function flop(address defender, uint256[] memory tokenIds) external payable {
         Player storage player = Players.getOrRevert(msg.sender);
-
-        Player storage d = Players.getOrRevert(defender);
-        d.assertNotImmune();
+        Player storage opponent = Players.getOrRevert(defender);
 
         player.checkpoint();
-        d.checkpoint();
+        opponent.checkpoint();
 
-        Attack_ storage a = Attacks.init(msg.sender, defender, tokenIds);
+        Attack_ storage a = Attacks.init(msg.sender, defender);
         uint256 id = a.id;
-        player.addOutgoingAttack(id);
-        d.addIncomingAttack(id);
+        RandomizerRequests.request(RequestAction.Flop, id);
 
-        emit Attack(id, msg.sender, defender, tokenIds);
+        emit Flop(id, msg.sender, defender, tokenIds);
     }
 
-    function defend(
-        uint256 attackId,
-        uint256[] memory tokenIds,
-        uint256[] memory jokerTokenIds,
-        uint8[] memory jokerCards
-    ) external {
+    function submit(uint256 attackId, uint256[] memory tokenIds, uint8[] memory jokerCards) external payable {
         Attack_ storage a = Attacks.get(attackId);
-        if (a.defender != msg.sender) revert Forbidden();
 
         Players.get(a.attacker).checkpoint();
         Players.get(a.defender).checkpoint();
 
-        a.defend(tokenIds, jokerTokenIds, jokerCards);
+        emit Submit(attackId, msg.sender, tokenIds, jokerCards);
 
-        emit Defend(attackId, tokenIds, jokerTokenIds);
-    }
-
-    function resolveAttack(uint256 attackId) external payable {
-        Attack_ storage a = Attacks.get(attackId);
-
-        if (a.resolving) revert AttackResolving();
-        if (a.finalized) revert AttackFinalized();
-
-        Players.get(a.attacker).checkpoint();
-        Players.get(a.defender).checkpoint();
-
-        if (s.defendingTokenIds[attackId].length > 0) {
-            a.markResolving();
-
-            uint256 randomizerId = RandomizerRequests.request(RequestAction.Attack, attackId);
-
-            emit ResolveAttack(attackId, randomizerId);
-        } else {
-            GameConfig memory c = GameConfigs.latest();
-            if (block.timestamp <= a.startedAt + c.attackPeriod) revert AttackOngoing();
-
-            Rewards.moveAccReward(a.attacker, a.defender, c.maxBootyPercentage);
-
-            a.finalize(AttackResult.Fail);
-
-            emit FinalizeAttack(attackId);
+        if (a.submit(tokenIds, jokerCards)) {
+            RandomizerRequests.request(RequestAction.ShowDown, attackId);
         }
+    }
+
+    function finalize(uint256 attackId) external {
+        Attack_ storage a = Attacks.get(attackId);
+
+        Players.get(a.attacker).checkpoint();
+        Players.get(a.defender).checkpoint();
+
+        a.finalize(AttackResult.Fail);
+
+        Rewards.moveAccReward(a.defender, a.attacker, GameConfigs.latest().maxBootyPercentage);
+
+        emit FinalizeAttack(attackId);
     }
 }

@@ -33,6 +33,8 @@ struct GameStorage {
     mapping(uint256 attackId => Attack_) attacks;
     mapping(uint256 attackId => uint256[]) attackingTokenIds;
     mapping(uint256 attackId => uint256[]) defendingTokenIds;
+    mapping(uint256 attackId => uint8[]) communityCards;
+    mapping(uint256 attackId => uint8[]) attackingJokerCards;
     mapping(uint256 attackId => uint8[]) defendingJokerCards;
     // randomizer requests
     mapping(uint256 randomizerId => RandomizerRequest) pendingRandomizerRequests;
@@ -55,8 +57,8 @@ struct GameConfig {
     uint8 maxCardLevel;
     uint8 bogoPercentage;
     uint32 minDuration;
-    uint32 immunePeriod;
     uint32 attackPeriod;
+    uint32 defensePeriod;
 }
 
 struct ItemEntry {
@@ -96,12 +98,20 @@ struct Card {
 
 struct Attack_ {
     uint256 id;
-    bool resolving;
-    bool finalized;
+    AttackStatus status;
     AttackResult result;
     address attacker;
     address defender;
     uint64 startedAt;
+}
+
+enum AttackStatus {
+    Invalid,
+    Flopping,
+    WaitingForAttack,
+    WaitingForDefense,
+    ShowingDown,
+    Finalized
 }
 
 enum AttackResult {
@@ -118,7 +128,8 @@ struct RandomizerRequest {
 
 enum RequestAction {
     Invalid,
-    Attack
+    Flop,
+    ShowDown
 }
 
 struct RandomValue {

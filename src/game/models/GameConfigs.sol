@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.24;
 
-import { HOLE_CARDS_SMALL } from "../GameConstants.sol";
+import { HOLE_CARDS } from "../GameConstants.sol";
 import { GameConfig, GameStorage } from "../GameStorage.sol";
 
 import { IERC721 } from "forge-std/interfaces/IERC721.sol";
@@ -75,7 +75,7 @@ library GameConfigs {
     }
 
     function updateConfig(GameConfig memory c) internal {
-        if (c.maxJokers == 0 || c.maxJokers > HOLE_CARDS_SMALL) revert InvalidNumber();
+        if (c.maxJokers == 0 || c.maxJokers > HOLE_CARDS) revert InvalidNumber();
         if (c.minBootyPercentage >= c.maxBootyPercentage || c.maxBootyPercentage >= 100) {
             revert InvalidPercentage();
         }

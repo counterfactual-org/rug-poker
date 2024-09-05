@@ -72,8 +72,8 @@ library DiamondDeployer {
             maxPlayerLevel: 50,
             maxCardLevel: 10,
             bogoPercentage: 10,
-            immunePeriod: 1 hours,
-            attackPeriod: 23 hours
+            attackPeriod: 1 hours,
+            defensePeriod: 24 hours
         });
     }
 

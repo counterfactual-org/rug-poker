@@ -3,8 +3,9 @@ pragma solidity ^0.8.24;
 
 import {
     CARDS,
+    COMMUNITY_CARDS,
+    FLOPPED_CARDS,
     HOLE_CARDS,
-    HOLE_CARDS_SMALL,
     RANK_ACE,
     RANK_EIGHT,
     RANK_FIVE,
@@ -29,6 +30,7 @@ import { Rewards } from "./Rewards.sol";
 import { IEvaluator } from "src/interfaces/IEvaluator.sol";
 import { INFT } from "src/interfaces/INFT.sol";
 import { INFTMinter } from "src/interfaces/INFTMinter.sol";
+import { ArrayLib } from "src/libraries/ArrayLib.sol";
 
 library Cards {
     using Players for Player;
@@ -44,6 +46,9 @@ library Cards {
     event CardGainXP(uint256 tokenId, uint32 xp);
     event CardLevelUp(uint256 tokenId, uint8 level);
 
+    error CardsNotDistinct();
+    error InvalidNumberOfCards();
+    error DuplicateTokenIds();
     error CardNotAdded(uint256 tokenId);
     error Underuse(uint256 tokenId);
     error NotCardOwner(uint256 tokenId);
@@ -58,31 +63,50 @@ library Cards {
         }
     }
 
-    function areDistinct(uint256[] memory ids) internal view returns (bool) {
-        for (uint256 i; i < ids.length - 1; ++i) {
-            for (uint256 j = i + 1; j < ids.length; ++j) {
-                Card storage cardA = Cards.get(ids[i]);
-                Card storage cardB = Cards.get(ids[j]);
-                if (cardA.rank == cardB.rank && cardA.suit == cardB.suit) return true;
-            }
-        }
-        return false;
+    function assertValidNumberOfCards(uint256 number) internal pure {
+        if (number != 2) revert InvalidNumberOfCards();
     }
 
-    function hasValidLength(uint256[] memory ids) internal pure returns (bool) {
-        return ids.length == HOLE_CARDS || ids.length == HOLE_CARDS_SMALL;
+    function assertNotDuplicate(uint256[] memory ids) internal pure {
+        if (ArrayLib.hasDuplicate(ids)) revert DuplicateTokenIds();
+    }
+
+    function assertDistinct(uint8[] memory cards) internal pure {
+        for (uint256 i; i < cards.length - 1; ++i) {
+            for (uint256 j = i + 1; j < cards.length; ++j) {
+                if (cards[i] == cards[j]) revert CardsNotDistinct();
+            }
+        }
     }
 
     function isValidValue(uint8 value) internal pure returns (bool) {
         return value < MAX_CARD_VALUE;
     }
 
+    function simulateDrawCards(uint256 number, bytes32 seed, uint256 offset)
+        internal
+        pure
+        returns (uint8[] memory cards)
+    {
+        cards = new uint8[](number);
+        for (uint256 i; i < number; ++i) {
+            cards[i] = Random.simulateDraw(seed, offset + i, 0, MAX_CARD_VALUE);
+        }
+    }
+
+    function drawCard() internal returns (uint8 card) {
+        return Random.draw(0, MAX_CARD_VALUE);
+    }
+
     function evaluateHands(
-        uint256[] memory attackingTokenIds,
-        uint256[] memory defendingTokenIds,
-        uint8[] memory defendingJokerCards
+        uint256[] storage attackingTokenIds,
+        uint256[] storage defendingTokenIds,
+        uint8[] storage attackingJokerCards,
+        uint8[] storage defendingJokerCards,
+        uint8[] storage communityCards
     )
         internal
+        view
         returns (
             IEvaluator.HandRank handAttack,
             uint256 rankAttack,
@@ -90,24 +114,23 @@ library Cards {
             uint256 rankDefense
         )
     {
-        uint256 holeCards = attackingTokenIds.length;
+        uint256 attackingJokerIndex;
+        uint256 defendingJokerIndex;
         uint256[] memory attackingCards = new uint256[](CARDS);
         uint256[] memory defendingCards = new uint256[](CARDS);
-        uint256 jokersLength = defendingJokerCards.length;
-        for (uint256 i; i < holeCards; ++i) {
+        for (uint256 i; i < HOLE_CARDS; ++i) {
             Card storage attackingCard = Cards.get(attackingTokenIds[i]);
-            attackingCards[i] = attackingCard.rank * 4 + attackingCard.suit;
-            if (i < jokersLength) {
-                defendingCards[i] = defendingJokerCards[i];
-                continue;
+            if (isJoker(attackingCard)) {
+                attackingCards[i] = attackingJokerCards[attackingJokerIndex++];
             }
             Card storage defendingCard = Cards.get(defendingTokenIds[i]);
-            defendingCards[i] = defendingCard.rank * 4 + defendingCard.suit;
+            if (isJoker(defendingCard)) {
+                defendingCards[i] = defendingJokerCards[defendingJokerIndex++];
+            }
         }
-        for (uint256 i; i < CARDS - holeCards; ++i) {
-            uint8 card = Random.draw(0, MAX_CARD_VALUE);
-            attackingCards[holeCards + i] = card;
-            defendingCards[holeCards + i] = card;
+        for (uint256 i; i < COMMUNITY_CARDS; ++i) {
+            attackingCards[HOLE_CARDS + i] = communityCards[i];
+            defendingCards[HOLE_CARDS + i] = communityCards[i];
         }
 
         IEvaluator evaluator = GameConfigs.evaluator7();
@@ -205,6 +228,10 @@ library Cards {
     function deriveSuit(uint256 tokenId) internal view returns (uint8) {
         bytes32 data = GameConfigs.nft().dataOf(tokenId);
         return uint8(data[FIELD_SUIT]) % 4;
+    }
+
+    function toValue(Card storage self) internal view returns (uint8) {
+        return self.rank * 4 + self.suit;
     }
 
     function assertAvailable(Card storage self, address owner, bool assertNotWornOut, bool assertDurationElapsed)

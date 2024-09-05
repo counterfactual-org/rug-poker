@@ -10,8 +10,8 @@ import { IRandomizer } from "src/interfaces/IRandomizer.sol";
 
 library RandomizerRequests {
     using Attacks for Attack_;
-    using Players for Player;
-    using Cards for Card;
+
+    event RequestRandomizer(RequestAction indexed action, uint256 indexed id, uint256 indexed randomizerId);
 
     error InsufficientFee();
     error InvalidAction();
@@ -26,22 +26,25 @@ library RandomizerRequests {
 
     function request(RequestAction action, uint256 id) internal returns (uint256 randomizerId) {
         GameStorage storage s = gameStorage();
-
-        if (action == RequestAction.Attack) {
-            if (s.staging) {
-                // use psuedo-random value in staging env
-                Random.set(keccak256(abi.encodePacked(id, block.number, block.timestamp)));
-                Attacks.get(id).onResolve();
+        if (s.staging) {
+            // use psuedo-random value in staging env
+            Random.setSeed(keccak256(abi.encodePacked(id, block.number, block.timestamp)));
+            if (action == RequestAction.Flop) {
+                Attacks.get(id).onFlop();
             } else {
-                address _randomizer = s.randomizer;
-                uint256 _randomizerGasLimit = s.randomizerGasLimit;
-                uint256 fee = IRandomizer(_randomizer).estimateFee(_randomizerGasLimit);
-                if (address(this).balance < fee) revert InsufficientFee();
-
-                IRandomizer(_randomizer).clientDeposit{ value: fee }(address(this));
-                randomizerId = IRandomizer(_randomizer).request(_randomizerGasLimit);
-                s.pendingRandomizerRequests[randomizerId] = RandomizerRequest(action, id);
+                Attacks.get(id).onShowDown();
             }
+        } else if (action == RequestAction.Flop || action == RequestAction.ShowDown) {
+            address _randomizer = s.randomizer;
+            uint256 _randomizerGasLimit = s.randomizerGasLimit;
+            uint256 fee = IRandomizer(_randomizer).estimateFee(_randomizerGasLimit);
+            if (address(this).balance < fee) revert InsufficientFee();
+
+            IRandomizer(_randomizer).clientDeposit{ value: fee }(address(this));
+            randomizerId = IRandomizer(_randomizer).request(_randomizerGasLimit);
+            s.pendingRandomizerRequests[randomizerId] = RandomizerRequest(action, id);
+
+            emit RequestRandomizer(action, id, randomizerId);
         } else {
             revert InvalidAction();
         }
@@ -55,10 +58,12 @@ library RandomizerRequests {
         RandomizerRequest memory r = s.pendingRandomizerRequests[randomizerId];
         delete s.pendingRandomizerRequests[randomizerId];
 
-        Random.set(value);
+        Random.setSeed(value);
 
-        if (r.action == RequestAction.Attack) {
-            Attacks.get(r.id).onResolve();
+        if (r.action == RequestAction.Flop) {
+            Attacks.get(r.id).onFlop();
+        } else if (r.action == RequestAction.ShowDown) {
+            Attacks.get(r.id).onShowDown();
         } else {
             revert InvalidRandomizerId();
         }
