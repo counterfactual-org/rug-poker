@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.24;
 
+import { ATTACK_ROUNDS } from "./GameConstants.sol";
+
 struct GameStorage {
     // configs
     bool staging;
@@ -33,9 +35,9 @@ struct GameStorage {
     mapping(uint256 attackId => Attack_) attacks;
     mapping(uint256 attackId => uint256[]) attackingTokenIds;
     mapping(uint256 attackId => uint256[]) defendingTokenIds;
-    mapping(uint256 attackId => uint8[]) communityCards;
     mapping(uint256 attackId => uint8[]) attackingJokerCards;
     mapping(uint256 attackId => uint8[]) defendingJokerCards;
+    mapping(uint256 attackId => uint8[][ATTACK_ROUNDS]) communityCards;
     // randomizer requests
     mapping(uint256 randomizerId => RandomizerRequest) pendingRandomizerRequests;
     // random

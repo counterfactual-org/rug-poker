@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {
+    ATTACK_ROUNDS,
     CARDS,
     COMMUNITY_CARDS,
     FLOPPED_CARDS,
@@ -103,15 +104,15 @@ library Cards {
         uint256[] storage defendingTokenIds,
         uint8[] storage attackingJokerCards,
         uint8[] storage defendingJokerCards,
-        uint8[] storage communityCards
+        uint8[][ATTACK_ROUNDS] storage communityCards
     )
         internal
         view
         returns (
-            IEvaluator.HandRank handAttack,
-            uint256 rankAttack,
-            IEvaluator.HandRank handDefense,
-            uint256 rankDefense
+            IEvaluator.HandRank[ATTACK_ROUNDS] memory handsAttack,
+            uint256[ATTACK_ROUNDS] memory ranksAttack,
+            IEvaluator.HandRank[ATTACK_ROUNDS] memory handsDefense,
+            uint256[ATTACK_ROUNDS] memory ranksDefense
         )
     {
         uint256 attackingJokerIndex;
@@ -128,14 +129,16 @@ library Cards {
                 defendingCards[i] = defendingJokerCards[defendingJokerIndex++];
             }
         }
-        for (uint256 i; i < COMMUNITY_CARDS; ++i) {
-            attackingCards[HOLE_CARDS + i] = communityCards[i];
-            defendingCards[HOLE_CARDS + i] = communityCards[i];
-        }
 
-        IEvaluator evaluator = GameConfigs.evaluator7();
-        (handAttack, rankAttack) = evaluator.handRank(attackingCards);
-        (handDefense, rankDefense) = evaluator.handRank(defendingCards);
+        for (uint256 i; i < ATTACK_ROUNDS; ++i) {
+            for (uint256 j; j < COMMUNITY_CARDS; ++j) {
+                attackingCards[HOLE_CARDS + j] = communityCards[i][j];
+                defendingCards[HOLE_CARDS + j] = communityCards[i][j];
+            }
+            IEvaluator evaluator = GameConfigs.evaluator7();
+            (handsAttack[i], ranksAttack[i]) = evaluator.handRank(attackingCards);
+            (handsDefense[i], ranksDefense[i]) = evaluator.handRank(defendingCards);
+        }
     }
 
     function gainXPBatch(uint256[] memory ids, uint32 xp) internal {

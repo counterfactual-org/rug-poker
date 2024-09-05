@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.24;
 
-import { COMMUNITY_CARDS, FLOPPED_CARDS } from "../GameConstants.sol";
+import { ATTACK_ROUNDS, COMMUNITY_CARDS, FLOPPED_CARDS } from "../GameConstants.sol";
 import { AttackResult, AttackStatus, Attack_, GameStorage } from "../GameStorage.sol";
 import { Card, Cards } from "./Cards.sol";
 import { GameConfig, GameConfigs } from "./GameConfigs.sol";
@@ -17,13 +17,15 @@ library Attacks {
 
     uint32 constant MAX_RANK = 7462;
 
-    event DetermineAttackResult(
-        IEvaluator.HandRank indexed handAttack,
+    event EvaluateHands(
+        uint256 indexed attackId,
+        uint8 indexed round,
+        IEvaluator.HandRank handAttack,
         uint256 rankAttack,
-        IEvaluator.HandRank indexed handDefense,
-        uint256 rankDefense,
-        AttackResult indexed result
+        IEvaluator.HandRank handDefense,
+        uint256 rankDefense
     );
+    event DetermineAttackResult(uint256 indexed attackId, AttackResult indexed result);
 
     error InvalidAddress();
     error Forbidden();
@@ -63,8 +65,10 @@ library Attacks {
         self.status = AttackStatus.WaitingForAttack;
 
         GameStorage storage s = gameStorage();
-        for (uint256 i; i < FLOPPED_CARDS; ++i) {
-            s.communityCards[self.id].push(Cards.drawCard());
+        for (uint256 i; i < ATTACK_ROUNDS; ++i) {
+            for (uint256 j; j < FLOPPED_CARDS; ++j) {
+                s.communityCards[self.id][i].push(Cards.drawCard());
+            }
         }
     }
 
@@ -137,8 +141,10 @@ library Attacks {
         Players.get(self.defender).checkpoint();
 
         GameStorage storage s = gameStorage();
-        for (uint256 i; i < COMMUNITY_CARDS - FLOPPED_CARDS; ++i) {
-            s.communityCards[self.id].push(Cards.drawCard());
+        for (uint256 i; i < ATTACK_ROUNDS; ++i) {
+            for (uint256 j; j < COMMUNITY_CARDS - FLOPPED_CARDS; ++j) {
+                s.communityCards[self.id][i].push(Cards.drawCard());
+            }
         }
 
         AttackResult result = determineAttackResult(self);
@@ -149,44 +155,59 @@ library Attacks {
         GameStorage storage s = gameStorage();
 
         uint256 id = self.id;
-        (IEvaluator.HandRank handAttack, uint256 rankAttack, IEvaluator.HandRank handDefense, uint256 rankDefense) =
-        Cards.evaluateHands(
+        (
+            IEvaluator.HandRank[ATTACK_ROUNDS] memory handsAttack,
+            uint256[ATTACK_ROUNDS] memory ranksAttack,
+            IEvaluator.HandRank[ATTACK_ROUNDS] memory handsDefense,
+            uint256[ATTACK_ROUNDS] memory ranksDefense
+        ) = Cards.evaluateHands(
             s.attackingTokenIds[id],
             s.defendingTokenIds[id],
             s.attackingJokerCards[id],
             s.defendingJokerCards[id],
             s.communityCards[id]
         );
+        (address attacker, address defender, uint256[] memory attackingTokenIds, uint256[] memory defendingTokenIds) =
+            (self.attacker, self.defender, s.attackingTokenIds[id], s.defendingTokenIds[id]);
+        (uint8 attackerWon, uint8 attackerLost, uint256 rankSumAttack, uint256 rankSumDefense) = (0, 0, 0, 0);
+        for (uint8 i; i < ATTACK_ROUNDS; ++i) {
+            if (ranksAttack[i] < ranksDefense[i]) {
+                attackerWon++;
+                _increaseXPs(attacker, defender, ranksAttack[i], ranksDefense[i], attackingTokenIds, defendingTokenIds);
+            } else if (ranksAttack[i] > ranksDefense[i]) {
+                attackerLost++;
+                _increaseXPs(defender, attacker, ranksDefense[i], ranksAttack[i], defendingTokenIds, attackingTokenIds);
+            }
+            rankSumAttack += ranksAttack[i];
+            rankSumDefense += ranksDefense[i];
+            emit EvaluateHands(self.id, i, handsAttack[i], ranksAttack[i], handsDefense[i], ranksDefense[i]);
+        }
 
-        (address attacker, address defender) = (self.attacker, self.defender);
-        (uint256[] memory attackingTokenIds, uint256[] memory defendingTokenIds) =
-            (s.attackingTokenIds[id], s.defendingTokenIds[id]);
         result = AttackResult.Draw;
-        if (rankAttack < rankDefense) {
-            _processSuccess(attacker, defender, rankAttack, rankDefense, attackingTokenIds, defendingTokenIds);
-            _increaseXPs(attacker, defender, rankAttack, rankDefense, attackingTokenIds, defendingTokenIds);
+        if (attackerWon > attackerLost) {
+            _processSuccess(attacker, defender, attackingTokenIds, defendingTokenIds);
             result = AttackResult.Success;
-        } else if (rankAttack > rankDefense) {
-            _processFail(defender, rankAttack, rankDefense, attackingTokenIds, defendingTokenIds);
-            _increaseXPs(defender, attacker, rankDefense, rankAttack, defendingTokenIds, attackingTokenIds);
+        } else if (attackerWon < attackerLost) {
+            _processFail(defender, attackingTokenIds, defendingTokenIds);
             result = AttackResult.Fail;
         }
+        if (rankSumDefense > rankSumAttack) {
+            Players.get(attacker).incrementPoints(rankSumDefense - rankSumAttack);
+        } else if (rankSumAttack > rankSumDefense) {
+            Players.get(defender).incrementPoints(rankSumAttack - rankSumDefense);
+        }
         self.result = result;
-
-        emit DetermineAttackResult(handAttack, rankAttack, handDefense, rankDefense, result);
+        emit DetermineAttackResult(self.id, result);
     }
 
     function _processSuccess(
         address attacker,
         address defender,
-        uint256 rankAttack,
-        uint256 rankDefense,
         uint256[] memory attackingTokenIds,
         uint256[] memory defendingTokenIds
     ) private {
         uint8 percentage = _bootyPercentage(_bootyPoints(attackingTokenIds), _bootyPoints(defendingTokenIds));
         Rewards.moveAccReward(defender, attacker, percentage);
-        Players.get(attacker).incrementPoints(rankDefense - rankAttack);
     }
 
     function _bootyPercentage(uint256 attackBootyPoints, uint256 defenseBootyPoints) private view returns (uint8) {
@@ -199,13 +220,9 @@ library Attacks {
         );
     }
 
-    function _processFail(
-        address defender,
-        uint256 rankAttack,
-        uint256 rankDefense,
-        uint256[] memory attackingTokenIds,
-        uint256[] memory defendingTokenIds
-    ) private {
+    function _processFail(address defender, uint256[] memory attackingTokenIds, uint256[] memory defendingTokenIds)
+        private
+    {
         uint256 cards = attackingTokenIds.length;
         uint256 attackBootyPoints = _bootyPoints(attackingTokenIds);
         uint256 defenseBootyPoints = _bootyPoints(defendingTokenIds);
@@ -217,7 +234,6 @@ library Attacks {
                 Cards.get(tokenId).move(defender);
             }
         }
-        Players.get(defender).incrementPoints(rankAttack - rankDefense);
     }
 
     function _bootyPoints(uint256[] memory tokenIds) private view returns (uint256 points) {

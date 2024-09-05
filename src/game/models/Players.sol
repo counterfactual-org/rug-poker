@@ -97,7 +97,7 @@ library Players {
         GameStorage storage s = gameStorage();
 
         address account = self.account;
-        if (s.incomingAttackIds[account].length >= self.maxCards / 5) revert ExceedingMaxAttacks();
+        if (s.incomingAttackIds[account].length >= self.maxCards / 2) revert ExceedingMaxAttacks();
 
         s.incomingAttackIds[account].push(attackId);
 
@@ -239,7 +239,7 @@ library Players {
         }
         self.level = level;
         self.xp = xp;
-        self.maxCards = 3 + level * 2;
+        self.maxCards = 4 + level;
     }
 
     function checkpoint(Player storage self) internal {
