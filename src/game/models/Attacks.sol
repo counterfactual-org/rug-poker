@@ -34,7 +34,8 @@ library Attacks {
     error InvalidNumberOfJokers();
     error InvalidJokerCard();
     error InvalidAttackStatus();
-    error AttackOngoing();
+    error WaitingForAttack();
+    error WaitingForDefense();
 
     function gameStorage() internal pure returns (GameStorage storage s) {
         assembly {
@@ -59,6 +60,12 @@ library Attacks {
         return s.attacks[id];
     }
 
+    function assertWaiting(Attack_ storage self) internal view {
+        if (self.status != AttackStatus.WaitingForAttack && self.status != AttackStatus.WaitingForDefense) {
+            revert InvalidAttackStatus();
+        }
+    }
+
     function onFlop(Attack_ storage self) internal {
         if (self.status != AttackStatus.Flopping) revert InvalidAttackStatus();
 
@@ -79,11 +86,11 @@ library Attacks {
         GameConfig memory c = GameConfigs.latest();
         if (self.status == AttackStatus.WaitingForAttack) {
             if (msg.sender != self.attacker) revert Forbidden();
-            if (self.startedAt + c.defensePeriod < block.timestamp) revert AttackTimeover();
+            if (self.startedAt + c.attackPeriod < block.timestamp) revert AttackTimeover();
             self.status = AttackStatus.WaitingForDefense;
         } else if (self.status == AttackStatus.WaitingForDefense) {
             if (msg.sender != self.defender) revert Forbidden();
-            if (self.startedAt + c.attackPeriod < block.timestamp) revert DefenseTimeover();
+            if (self.startedAt + c.defensePeriod < block.timestamp) revert DefenseTimeover();
             self.status = AttackStatus.ShowingDown;
             defending = true;
         } else {
@@ -260,8 +267,10 @@ library Attacks {
 
     function finalize(Attack_ storage self, AttackResult result) internal {
         GameConfig memory c = GameConfigs.latest();
-        if (self.status == AttackStatus.WaitingForDefense) {
-            if (block.timestamp <= self.startedAt + c.defensePeriod) revert AttackOngoing();
+        if (self.status == AttackStatus.WaitingForAttack) {
+            if (block.timestamp <= self.startedAt + c.attackPeriod) revert WaitingForAttack();
+        } else if (self.status == AttackStatus.WaitingForDefense) {
+            if (block.timestamp <= self.startedAt + c.defensePeriod) revert WaitingForDefense();
         } else if (self.status != AttackStatus.ShowingDown) {
             revert InvalidAttackStatus();
         }

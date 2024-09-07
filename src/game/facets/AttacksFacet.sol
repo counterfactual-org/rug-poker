@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.24;
 
-import { AttackResult, Attack_, Attacks } from "../models/Attacks.sol";
+import { AttackResult, AttackStatus, Attack_, Attacks } from "../models/Attacks.sol";
 import { Card, Cards } from "../models/Cards.sol";
 import { GameConfig, GameConfigs } from "../models/GameConfigs.sol";
 import { Player, Players } from "../models/Players.sol";
@@ -80,11 +80,16 @@ contract AttacksFacet is BaseGameFacet {
 
     function finalize(uint256 attackId) external {
         Attack_ storage a = Attacks.get(attackId);
+        a.assertWaiting();
 
         Players.get(a.attacker).checkpoint();
         Players.get(a.defender).checkpoint();
 
-        a.finalize(AttackResult.Fail);
+        if (a.status == AttackStatus.WaitingForAttack) {
+            a.finalize(AttackResult.Fail);
+        } else if (a.status == AttackStatus.WaitingForDefense) {
+            a.finalize(AttackResult.Success);
+        }
 
         Rewards.moveAccReward(a.defender, a.attacker, GameConfigs.latest().maxBootyPercentage);
 
