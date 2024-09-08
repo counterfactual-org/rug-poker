@@ -8,8 +8,7 @@ struct GameStorage {
     bool staging;
     address nft;
     address randomizer;
-    address evaluator5;
-    address evaluator7;
+    address evaluator9;
     uint256 randomizerGasLimit;
     address treasury;
     uint256 configVersion;
@@ -33,6 +32,7 @@ struct GameStorage {
     // attacks
     uint256 lastAttackId;
     mapping(uint256 attackId => Attack_) attacks;
+    mapping(uint256 attackId => uint8[]) allCards;
     mapping(uint256 attackId => uint256[]) attackingTokenIds;
     mapping(uint256 attackId => uint256[]) defendingTokenIds;
     mapping(uint256 attackId => uint8[]) attackingJokerCards;

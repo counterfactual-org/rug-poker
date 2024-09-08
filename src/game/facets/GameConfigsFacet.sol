@@ -6,25 +6,22 @@ import { BaseGameFacet } from "./BaseGameFacet.sol";
 
 contract GameConfigsFacet is BaseGameFacet {
     event UpdateRandomizerGasLimit(uint256 gasLimit);
-    event UpdateEvaluator5(address indexed evaluator);
-    event UpdateEvaluator7(address indexed evaluator);
+    event UpdateEvaluator9(address indexed evaluator);
     event UpdateTreasury(address indexed treasury);
     event UpdateConfig();
 
     function selectors() external pure override returns (bytes4[] memory s) {
-        s = new bytes4[](12);
+        s = new bytes4[](10);
         s[0] = this.nft.selector;
         s[1] = this.randomizer.selector;
-        s[2] = this.evaluator5.selector;
-        s[3] = this.evaluator7.selector;
-        s[4] = this.randomizerGasLimit.selector;
-        s[5] = this.treasury.selector;
-        s[6] = this.config.selector;
-        s[7] = this.updateRandomizerGasLimit.selector;
-        s[8] = this.updateEvaluator5.selector;
-        s[9] = this.updateEvaluator7.selector;
-        s[10] = this.updateTreasury.selector;
-        s[11] = this.updateConfig.selector;
+        s[2] = this.evaluator9.selector;
+        s[3] = this.randomizerGasLimit.selector;
+        s[4] = this.treasury.selector;
+        s[5] = this.config.selector;
+        s[6] = this.updateRandomizerGasLimit.selector;
+        s[7] = this.updateEvaluator9.selector;
+        s[8] = this.updateTreasury.selector;
+        s[9] = this.updateConfig.selector;
     }
 
     function nft() external view returns (address) {
@@ -35,12 +32,8 @@ contract GameConfigsFacet is BaseGameFacet {
         return s.randomizer;
     }
 
-    function evaluator5() external view returns (address) {
-        return s.evaluator5;
-    }
-
-    function evaluator7() external view returns (address) {
-        return s.evaluator7;
+    function evaluator9() external view returns (address) {
+        return s.evaluator9;
     }
 
     function randomizerGasLimit() external view returns (uint256) {
@@ -61,16 +54,10 @@ contract GameConfigsFacet is BaseGameFacet {
         emit UpdateRandomizerGasLimit(_randomizerGasLimit);
     }
 
-    function updateEvaluator5(address _evaluator) external onlyOwner {
-        GameConfigs.updateEvaluator5(_evaluator);
+    function updateEvaluator9(address _evaluator) external onlyOwner {
+        GameConfigs.updateEvaluator9(_evaluator);
 
-        emit UpdateEvaluator5(_evaluator);
-    }
-
-    function updateEvaluator7(address _evaluator) external onlyOwner {
-        GameConfigs.updateEvaluator7(_evaluator);
-
-        emit UpdateEvaluator7(_evaluator);
+        emit UpdateEvaluator9(_evaluator);
     }
 
     function updateTreasury(address _treasury) external onlyOwner {

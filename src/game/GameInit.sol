@@ -15,8 +15,7 @@ contract GameInit {
         bool staging,
         address nft,
         address randomizer,
-        address evaluator5,
-        address evaluator7,
+        address evaluator9,
         address treasury,
         uint256 randomizerGasLimit,
         GameConfig memory c
@@ -33,8 +32,7 @@ contract GameInit {
         s.staging = staging;
         s.nft = nft;
         s.randomizer = randomizer;
-        GameConfigs.updateEvaluator5(evaluator5);
-        GameConfigs.updateEvaluator7(evaluator7);
+        GameConfigs.updateEvaluator9(evaluator9);
         GameConfigs.updateTreasury(treasury);
         GameConfigs.updateRandomizerGasLimit(randomizerGasLimit);
         GameConfigs.updateConfig(c);

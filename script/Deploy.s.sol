@@ -15,8 +15,7 @@ contract DeployScript is BaseScript {
     function _run(uint256, address owner) internal override {
         bool staging = _isStaging();
         address randomizer = vm.envAddress("RANDOMIZER");
-        address evaluator5 = vm.envAddress("EVALUATOR5");
-        address evaluator7 = vm.envAddress("EVALUATOR7");
+        address evaluator9 = vm.envAddress("EVALUATOR9");
         address treasury = vm.envAddress("TREASURY");
 
         address nft = _loadDeployment("NFT");
@@ -30,7 +29,7 @@ contract DeployScript is BaseScript {
         address game = _loadDeployment("Game");
         if (game == address(0)) {
             game = DiamondDeployer.deployGame(
-                staging, nft, randomizer, evaluator5, evaluator7, treasury, MIN_RANDOMIZER_GAS_LIMIT, owner
+                staging, nft, randomizer, evaluator9, treasury, MIN_RANDOMIZER_GAS_LIMIT, owner
             );
             _saveDeployment("Game", address(game));
         }

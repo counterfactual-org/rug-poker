@@ -32,8 +32,7 @@ library DiamondDeployer {
         bool staging,
         address nft,
         address randomizer,
-        address evaluator5,
-        address evaluator7,
+        address evaluator9,
         address treasury,
         uint256 randomizerGasLimit,
         address owner
@@ -50,8 +49,7 @@ library DiamondDeployer {
             facets,
             address(init),
             abi.encodeCall(
-                GameInit.init,
-                (staging, nft, randomizer, evaluator5, evaluator7, treasury, randomizerGasLimit, _gameConfig())
+                GameInit.init, (staging, nft, randomizer, evaluator9, treasury, randomizerGasLimit, _gameConfig())
             ),
             owner
         );

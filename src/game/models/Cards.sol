@@ -47,9 +47,9 @@ library Cards {
     event CardGainXP(uint256 tokenId, uint32 xp);
     event CardLevelUp(uint256 tokenId, uint8 level);
 
-    error CardsNotDistinct();
     error InvalidNumberOfCards();
     error DuplicateTokenIds();
+    error InvalidCard();
     error CardNotAdded(uint256 tokenId);
     error Underuse(uint256 tokenId);
     error NotCardOwner(uint256 tokenId);
@@ -72,31 +72,35 @@ library Cards {
         if (ArrayLib.hasDuplicate(ids)) revert DuplicateTokenIds();
     }
 
-    function assertDistinct(uint8[] memory cards) internal pure {
-        for (uint256 i; i < cards.length - 1; ++i) {
-            for (uint256 j = i + 1; j < cards.length; ++j) {
-                if (cards[i] == cards[j]) revert CardsNotDistinct();
-            }
-        }
-    }
-
     function isValidValue(uint8 value) internal pure returns (bool) {
         return value < MAX_CARD_VALUE;
     }
 
-    function simulateDrawCards(uint256 number, bytes32 seed, uint256 offset)
-        internal
-        pure
-        returns (uint8[] memory cards)
-    {
-        cards = new uint8[](number);
-        for (uint256 i; i < number; ++i) {
-            cards[i] = Random.simulateDraw(seed, offset + i, 0, MAX_CARD_VALUE);
+    function populateAllCards(uint8[] storage allCards) internal {
+        for (uint8 i; i < MAX_CARD_VALUE; ++i) {
+            allCards.push(i);
         }
     }
 
-    function drawCard() internal returns (uint8 card) {
-        return Random.draw(0, MAX_CARD_VALUE);
+    function drawCard(uint8[] storage allCards) internal returns (uint8 card) {
+        uint256 length = allCards.length;
+        uint8 index = Random.draw(0, uint8(length));
+        card = allCards[index];
+        allCards[index] = allCards[length - 1];
+        allCards.pop();
+    }
+
+    function discardCard(uint8[] storage allCards, uint8 value) internal {
+        for (uint256 i; i < allCards.length; ++i) {
+            if (allCards[i] == value) {
+                uint256 length = allCards.length;
+                allCards[i] = allCards[length - 1];
+                allCards.pop();
+                return;
+            }
+        }
+
+        revert InvalidCard();
     }
 
     function evaluateHands(
@@ -135,7 +139,7 @@ library Cards {
                 attackingCards[HOLE_CARDS + j] = communityCards[i][j];
                 defendingCards[HOLE_CARDS + j] = communityCards[i][j];
             }
-            IEvaluator evaluator = GameConfigs.evaluator7();
+            IEvaluator evaluator = GameConfigs.evaluator9();
             (handsAttack[i], ranksAttack[i]) = evaluator.handRank(attackingCards);
             (handsDefense[i], ranksDefense[i]) = evaluator.handRank(defendingCards);
         }

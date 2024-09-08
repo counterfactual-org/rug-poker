@@ -42,12 +42,8 @@ library GameConfigs {
         return gameStorage().treasury;
     }
 
-    function evaluator5() internal view returns (IEvaluator) {
-        return IEvaluator(gameStorage().evaluator5);
-    }
-
-    function evaluator7() internal view returns (IEvaluator) {
-        return IEvaluator(gameStorage().evaluator7);
+    function evaluator9() internal view returns (IEvaluator) {
+        return IEvaluator(gameStorage().evaluator9);
     }
 
     function updateRandomizerGasLimit(uint256 _randomizerGasLimit) internal {
@@ -56,16 +52,10 @@ library GameConfigs {
         gameStorage().randomizerGasLimit = _randomizerGasLimit;
     }
 
-    function updateEvaluator5(address _evaluator) internal {
+    function updateEvaluator9(address _evaluator) internal {
         if (_evaluator == address(0)) revert InvalidAddress();
 
-        gameStorage().evaluator5 = _evaluator;
-    }
-
-    function updateEvaluator7(address _evaluator) internal {
-        if (_evaluator == address(0)) revert InvalidAddress();
-
-        gameStorage().evaluator7 = _evaluator;
+        gameStorage().evaluator9 = _evaluator;
     }
 
     function updateTreasury(address _treasury) internal {

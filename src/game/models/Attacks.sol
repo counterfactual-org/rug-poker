@@ -57,6 +57,8 @@ library Attacks {
             Attack_(id, AttackStatus.Flopping, AttackResult.None, attacker, defender, uint64(block.timestamp));
         s.lastAttackId = id;
 
+        Cards.populateAllCards(s.allCards[id]);
+
         return s.attacks[id];
     }
 
@@ -72,9 +74,11 @@ library Attacks {
         self.status = AttackStatus.WaitingForAttack;
 
         GameStorage storage s = gameStorage();
+        uint256 id = self.id;
+        uint8[] storage allCards = s.allCards[id];
         for (uint256 i; i < ATTACK_ROUNDS; ++i) {
             for (uint256 j; j < FLOPPED_CARDS; ++j) {
-                s.communityCards[self.id][i].push(Cards.drawCard());
+                s.communityCards[id][i].push(Cards.drawCard(allCards));
             }
         }
     }
@@ -100,11 +104,10 @@ library Attacks {
         Cards.assertValidNumberOfCards(tokenIds.length);
         Cards.assertNotDuplicate(tokenIds);
 
-        uint8[] memory cards = _populateCards(tokenIds, jokerCards);
-        Cards.assertDistinct(cards);
+        uint256 id = self.id;
+        _checkCards(id, tokenIds, jokerCards);
 
         GameStorage storage s = gameStorage();
-        uint256 id = self.id;
         if (defending) {
             s.defendingTokenIds[id] = tokenIds;
             s.defendingJokerCards[id] = jokerCards;
@@ -114,27 +117,23 @@ library Attacks {
         }
     }
 
-    function _populateCards(uint256[] memory tokenIds, uint8[] memory jokerCards)
-        private
-        returns (uint8[] memory cards)
-    {
+    function _checkCards(uint256 id, uint256[] memory tokenIds, uint8[] memory jokerCards) private {
         if (jokerCards.length > GameConfigs.latest().maxJokers) revert InvalidNumberOfJokers();
 
         uint256 jokerIndex;
-        cards = new uint8[](tokenIds.length);
-        for (uint256 i; i < cards.length; ++i) {
-            uint256 tokenId = tokenIds[i];
-            Card storage card = Cards.get(tokenId);
+        uint8[] storage allCards = gameStorage().allCards[id];
+        for (uint256 i; i < tokenIds.length; ++i) {
+            uint8 value;
+            Card storage card = Cards.get(tokenIds[i]);
             card.assertAvailable(msg.sender, true, false);
             card.markUnderuse();
             if (card.isJoker()) {
-                uint8 value = jokerCards[jokerIndex++];
+                value = jokerCards[jokerIndex++];
                 if (!Cards.isValidValue(value)) revert InvalidJokerCard();
-                cards[i] = value;
             } else {
-                cards[i] = card.toValue();
+                value = card.toValue();
             }
-            cards[i] = jokerCards[i];
+            Cards.discardCard(allCards, value);
         }
     }
 
@@ -148,9 +147,11 @@ library Attacks {
         Players.get(self.defender).checkpoint();
 
         GameStorage storage s = gameStorage();
+        uint256 id = self.id;
+        uint8[] storage allCards = s.allCards[id];
         for (uint256 i; i < ATTACK_ROUNDS; ++i) {
             for (uint256 j; j < COMMUNITY_CARDS - FLOPPED_CARDS; ++j) {
-                s.communityCards[self.id][i].push(Cards.drawCard());
+                s.communityCards[id][i].push(Cards.drawCard(allCards));
             }
         }
 
