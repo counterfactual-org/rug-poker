@@ -19,7 +19,5 @@ docs/
 # misc
 .DS_Store
 
-data/
-
+abis/
 deployments/31337.json
-deployments/50161.json
