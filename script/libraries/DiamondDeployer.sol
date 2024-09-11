@@ -28,6 +28,16 @@ library DiamondDeployer {
     uint8 private constant WINNER_RATIO_SILVER = 30;
     uint8 private constant WINNER_RATIO_BRONZE = 20;
 
+    function newGameFacet(uint256 index) internal returns (address) {
+        if (index == 0) return address(new AttacksFacet());
+        if (index == 1) return address(new CardsFacet());
+        if (index == 2) return address(new GameConfigsFacet());
+        if (index == 3) return address(new ItemsFacet());
+        if (index == 4) return address(new PlayersFacet());
+        if (index == 5) return address(new RandomizerFacet());
+        return address(0);
+    }
+
     function deployGame(
         bool staging,
         address nft,
@@ -36,16 +46,13 @@ library DiamondDeployer {
         address treasury,
         uint256 randomizerGasLimit,
         address owner
-    ) internal returns (address game) {
+    ) internal returns (address[] memory facets, address game) {
         GameInit init = new GameInit();
-        IFacet[] memory facets = new IFacet[](6);
-        facets[0] = new AttacksFacet();
-        facets[1] = new CardsFacet();
-        facets[2] = new GameConfigsFacet();
-        facets[3] = new ItemsFacet();
-        facets[4] = new PlayersFacet();
-        facets[5] = new RandomizerFacet();
-        return deployDiamond(
+        facets = new address[](6);
+        for (uint256 i; i < 6; ++i) {
+            facets[i] = newGameFacet(i);
+        }
+        game = deployDiamond(
             facets,
             address(init),
             abi.encodeCall(
@@ -75,17 +82,24 @@ library DiamondDeployer {
         });
     }
 
+    function newNFTMinterFacet(uint256 index) internal returns (address) {
+        if (index == 0) return address(new ClaimsFacet());
+        if (index == 1) return address(new JackpotFacet());
+        if (index == 2) return address(new MinterConfigsFacet());
+        if (index == 3) return address(new MintFacet());
+        return address(0);
+    }
+
     function deployNFTMinter(address nft, address treasury, address game, address owner)
         internal
-        returns (address nftMinter)
+        returns (address[] memory facets, address nftMinter)
     {
         MinterInit init = new MinterInit();
-        IFacet[] memory facets = new IFacet[](4);
-        facets[0] = new ClaimsFacet();
-        facets[1] = new JackpotFacet();
-        facets[2] = new MinterConfigsFacet();
-        facets[3] = new MintFacet();
-        return deployDiamond(
+        facets = new address[](4);
+        for (uint256 i; i < 4; ++i) {
+            facets[i] = newNFTMinterFacet(i);
+        }
+        nftMinter = deployDiamond(
             facets,
             address(init),
             abi.encodeCall(MinterInit.init, (nft, TOKENS_IN_BATCH, treasury, game, _minterConfig())),
@@ -108,7 +122,7 @@ library DiamondDeployer {
         });
     }
 
-    function deployDiamond(IFacet[] memory facets, address init, bytes memory initCallData, address owner)
+    function deployDiamond(address[] memory facets, address init, bytes memory initCallData, address owner)
         internal
         returns (address)
     {
@@ -116,7 +130,7 @@ library DiamondDeployer {
         Diamond diamond = new Diamond(owner, address(cut));
         IDiamondCut.FacetCut[] memory cuts = new IDiamondCut.FacetCut[](facets.length);
         for (uint256 i; i < facets.length; ++i) {
-            cuts[i] = IDiamondCut.FacetCut(address(facets[i]), IDiamondCut.FacetCutAction.Add, facets[i].selectors());
+            cuts[i] = IDiamondCut.FacetCut(facets[i], IDiamondCut.FacetCutAction.Add, IFacet(facets[i]).selectors());
         }
         IDiamondCut(address(diamond)).diamondCut(cuts, init, initCallData);
         return address(diamond);

@@ -6,7 +6,7 @@ verbosity = 3
 solc-version = "0.8.24"
 evm_version = "paris"
 via_ir = true
-fs_permissions = [{ access = "read-write", path = "./deployments/"}, { access = "read-write", path = "./data/"}, { access = "read", path = "./constants/"}]
+fs_permissions = [{ access = "read-write", path = "./deployments/"}, { access = "read-write", path = "./facets/"}, { access = "read-write", path = "./data/"}, { access = "read", path = "./constants/"}]
 memory_limit = 17179869184
 
 

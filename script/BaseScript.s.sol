@@ -63,14 +63,28 @@ abstract contract BaseScript is Script {
         }
         string memory chainId = block.chainid.toString();
         string memory path = string.concat("./deployments/", chainId, ".json");
+        string memory key = string.concat("deployment:", chainId);
         if (vm.exists(path)) {
-            vm.serializeJson(chainId, vm.readFile(path));
+            vm.serializeJson(key, vm.readFile(path));
         }
-        vm.writeJson(vm.serializeAddress(chainId, name, address(addr)), path);
+        vm.writeJson(vm.serializeAddress(key, name, address(addr)), path);
+    }
+
+    function _saveFacets(string memory name, address[] memory facets) internal {
+        if (!vm.exists("./facets/")) {
+            vm.createDir("./facets/", false);
+        }
+        string memory chainId = block.chainid.toString();
+        string memory path = string.concat("./facets/", chainId, ".json");
+        string memory key = string.concat("facets:", chainId);
+        if (vm.exists(path)) {
+            vm.serializeJson(key, vm.readFile(path));
+        }
+        vm.writeJson(vm.serializeAddress(key, name, facets), path);
     }
 
     function _loadDeployment(string memory name) internal returns (address) {
-        return _loadDeployment(_currentChain().chainId, name);
+        return _loadDeployment(block.chainid, name);
     }
 
     function _loadDeployment(uint256 chainId, string memory name) internal returns (address) {
@@ -83,16 +97,31 @@ abstract contract BaseScript is Script {
         return vm.parseJsonAddress(json, key);
     }
 
+    function _loadFacets(string memory name) internal returns (address[] memory) {
+        return _loadFacets(block.chainid, name);
+    }
+
+    function _loadFacets(uint256 chainId, string memory name) internal returns (address[] memory) {
+        string memory _chainId = chainId.toString();
+        string memory path = string.concat("./facets/", _chainId, ".json");
+        if (!vm.exists(path)) revert(string.concat(path, " does not exist"));
+        string memory json = vm.readFile(path);
+        string memory key = string.concat(".", name);
+        if (!vm.exists(path)) revert(string.concat(name, " does not exist"));
+        if (!vm.keyExists(json, key)) return new address[](0);
+        return vm.parseJsonAddressArray(json, key);
+    }
+
     function _loadConstantUint(string memory name) internal view returns (uint256) {
-        return _loadConstantUint(_currentChain().chainId, name);
+        return _loadConstantUint(block.chainid, name);
     }
 
     function _loadConstantAddress(string memory name) internal view returns (address) {
-        return _loadConstantAddress(_currentChain().chainId, name);
+        return _loadConstantAddress(block.chainid, name);
     }
 
     function _loadConstant() internal view returns (string memory json) {
-        return _loadConstants(_currentChain().chainId);
+        return _loadConstants(block.chainid);
     }
 
     function _loadConstantUint(uint256 chainId, string memory name) internal view returns (uint256) {

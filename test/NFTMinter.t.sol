@@ -59,7 +59,7 @@ contract NFTMinterTest is Test {
         winnerRatios[2] = WINNER_RATIO_BRONZE;
         nft = new NFT(false, address(randomizer), MIN_RANDOMIZER_GAS_LIMIT, address(0), "NFT", "NFT", owner);
         game = new GameMock();
-        minter = DiamondDeployer.deployNFTMinter(address(nft), treasury, address(game), owner);
+        (, minter) = DiamondDeployer.deployNFTMinter(address(nft), treasury, address(game), owner);
 
         vm.deal(alice, 10_000e18);
         vm.deal(bob, 10_000e18);

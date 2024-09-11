@@ -4,12 +4,16 @@ pragma solidity ^0.8.0;
 import { BaseScript } from "./BaseScript.s.sol";
 import { DiamondDeployer } from "./libraries/DiamondDeployer.sol";
 
+import { LibString } from "solmate/utils/LibString.sol";
 import { AuctionHouse } from "src/AuctionHouse.sol";
 import { NFT } from "src/NFT.sol";
 import { SvgRendererV1 } from "src/SvgRendererV1.sol";
 import { TokenURIRendererV1 } from "src/TokenURIRendererV1.sol";
+import { IFacet } from "src/interfaces/IFacet.sol";
 
 contract DeployScript is BaseScript {
+    using LibString for uint256;
+
     uint256 private constant MIN_RANDOMIZER_GAS_LIMIT = 100_000;
 
     function _run(uint256, address owner) internal override {
@@ -26,18 +30,21 @@ contract DeployScript is BaseScript {
             _saveDeployment("NFT", address(nft));
         }
 
+        address[] memory facets;
         address game = _loadDeployment("Game");
         if (game == address(0)) {
-            game = DiamondDeployer.deployGame(
+            (facets, game) = DiamondDeployer.deployGame(
                 staging, nft, randomizer, evaluator9, treasury, MIN_RANDOMIZER_GAS_LIMIT, owner
             );
             _saveDeployment("Game", address(game));
+            _saveFacets("Game", facets);
         }
 
         address nftMinter = _loadDeployment("NFTMinter");
         if (nftMinter == address(0)) {
-            nftMinter = DiamondDeployer.deployNFTMinter(nft, treasury, game, owner);
+            (facets, nftMinter) = DiamondDeployer.deployNFTMinter(nft, treasury, game, owner);
             _saveDeployment("NFTMinter", address(nftMinter));
+            _saveFacets("NFTMinter", facets);
         }
 
         address svgRenderer = _loadDeployment("SvgRendererV1");
