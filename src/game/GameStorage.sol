@@ -83,6 +83,7 @@ struct Player {
     uint256 maxCards;
     uint256 cards;
     uint256 points;
+    uint256 avatarTokenId;
 }
 
 struct Card {

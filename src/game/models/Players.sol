@@ -21,6 +21,7 @@ library Players {
     event AdjustPoints(address indexed account, uint256 points);
     event AdjustShares(address indexed account, uint256 sharesSum, uint256 shares);
     event UpdateUsername(address indexed account, bytes32 indexed username);
+    event UpdateAvatar(address indexed account, uint256 tokenId);
     event AddIncomingAttack(address indexed account, uint256 attackId);
     event RemoveIncomingAttack(address indexed account, uint256 attackId);
     event AddOutgoingAttack(address indexed account, uint256 attackId);
@@ -29,7 +30,7 @@ library Players {
 
     error NotPlayer();
     error PlayerInitialized();
-    error InvalidSeed();
+    error Forbidden();
     error InvalidUsername();
     error DuplicateUsername();
     error ExceedingMaxAttacks();
@@ -64,6 +65,7 @@ library Players {
         self.account = account;
         self.level = 1;
         self.maxCards = 5;
+        self.avatarTokenId = type(uint256).max;
         updateUsername(self, username);
 
         emit PlayerLevelUp(account, 1);
@@ -89,8 +91,23 @@ library Players {
         emit UpdateUsername(account, username);
     }
 
+    function updateAvatar(Player storage self, uint256 tokenId) internal {
+        Card storage card = Cards.get(tokenId);
+        if (card.owner != msg.sender) revert Forbidden();
+
+        self.avatarTokenId = tokenId;
+
+        emit UpdateAvatar(self.account, tokenId);
+    }
+
     function updateLastDefendedAt(Player storage self) internal {
         self.lastDefendedAt = uint64(block.timestamp);
+    }
+
+    function removeAvatar(Player storage self) internal {
+        self.avatarTokenId = type(uint256).max;
+
+        emit UpdateAvatar(self.account, type(uint256).max);
     }
 
     function addIncomingAttack(Player storage self, uint256 attackId) internal {

@@ -83,6 +83,9 @@ contract CardsFacet is BaseGameFacet {
 
     function removeCard(uint256 tokenId) external {
         Player storage player = Players.getOrRevert(msg.sender);
+        if (player.avatarTokenId == tokenId) {
+            player.removeAvatar();
+        }
 
         Card storage card = Cards.get(tokenId);
         card.assertAvailable(msg.sender, false, true);
@@ -104,6 +107,9 @@ contract CardsFacet is BaseGameFacet {
 
     function burnCard(uint256 tokenId) external {
         Player storage player = Players.getOrRevert(msg.sender);
+        if (player.avatarTokenId == tokenId) {
+            player.removeAvatar();
+        }
 
         Card storage card = Cards.get(tokenId);
         card.assertAvailable(msg.sender, true, false);
