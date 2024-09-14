@@ -1,7 +1,7 @@
 const fs = require("fs")
 const { execSync } = require('child_process');
 
-function mergeAbis(name, facets) {
+function extractAbis(name, facets) {
     let abis = [];
     facets.forEach(facet => {
         getAbi(facet).forEach(abi => {
@@ -27,7 +27,10 @@ function writeAbi(name, abi) {
     fs.writeFileSync(`abis/${name}.json`, JSON.stringify(abi, null, 2));
 }
 
+if (!fs.existsSync("abis")) {
+    fs.mkdirSync("abis")
+}
 writeAbi("AuctionHouse", getAbi("AuctionHouse"))
 writeAbi("NFT", getAbi("NFT"))
-mergeAbis("NFTMinter", ["ClaimsFacet", "JackpotFacet", "MinterConfigsFacet", "MintFacet"]);
-mergeAbis("Game", ["AttacksFacet", "CardsFacet", "GameConfigsFacet", "ItemsFacet", "PlayersFacet", "RandomizerFacet"]);
+extractAbis("NFTMinter", ["ClaimsFacet", "JackpotFacet", "MinterConfigsFacet", "MintFacet"]);
+extractAbis("Game", ["AttacksFacet", "CardsFacet", "GameConfigsFacet", "ItemsFacet", "PlayersFacet", "RandomizerFacet"]);

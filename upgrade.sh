@@ -2,4 +2,5 @@
 
 source .env
 # --skip-simulation for preventing error 'intrinsic gas too low'
-forge script UpgradeScript --rpc-url $RPC_URL --skip-simulation
+# --slow for preventing error 'nonce too low'
+forge script UpgradeScript --rpc-url $RPC_URL --broadcast --skip-simulation --slow
