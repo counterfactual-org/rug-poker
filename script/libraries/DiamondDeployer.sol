@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import { Diamond } from "diamond/Diamond.sol";
-import { DiamondCutFacet } from "diamond/facets/DiamondCutFacet.sol";
 import { IDiamondCut } from "diamond/interfaces/IDiamondCut.sol";
 import { GameConfig, GameInit } from "src/game/GameInit.sol";
 import { AttacksFacet } from "src/game/facets/AttacksFacet.sol";
@@ -27,19 +26,21 @@ library DiamondDeployer {
     uint8 private constant WINNER_RATIO_GOLD = 50;
     uint8 private constant WINNER_RATIO_SILVER = 30;
     uint8 private constant WINNER_RATIO_BRONZE = 20;
+    address private constant DIAMOND_CUT_FACET = address(0);
 
     function newGameFacet(uint256 index) internal returns (address) {
-        if (index == 0) return address(new AttacksFacet());
-        if (index == 1) return address(new CardsFacet());
-        if (index == 2) return address(new GameConfigsFacet());
-        if (index == 3) return address(new ItemsFacet());
-        if (index == 4) return address(new PlayersFacet());
-        if (index == 5) return address(new RandomizerFacet());
+        if (index == 0) return address(new AttacksFacet{ salt: 0 }());
+        if (index == 1) return address(new CardsFacet{ salt: 0 }());
+        if (index == 2) return address(new GameConfigsFacet{ salt: 0 }());
+        if (index == 3) return address(new ItemsFacet{ salt: 0 }());
+        if (index == 4) return address(new PlayersFacet{ salt: 0 }());
+        if (index == 5) return address(new RandomizerFacet{ salt: 0 }());
         return address(0);
     }
 
     function deployGame(
         bool staging,
+        address diamondCutFacet,
         address nft,
         address randomizer,
         address evaluator9,
@@ -47,12 +48,14 @@ library DiamondDeployer {
         uint256 randomizerGasLimit,
         address owner
     ) internal returns (address[] memory facets, address game) {
-        GameInit init = new GameInit();
+        GameInit init = new GameInit{ salt: 0 }();
         facets = new address[](6);
         for (uint256 i; i < 6; ++i) {
             facets[i] = newGameFacet(i);
         }
         game = deployDiamond(
+            "Game",
+            diamondCutFacet,
             facets,
             address(init),
             abi.encodeCall(
@@ -83,23 +86,25 @@ library DiamondDeployer {
     }
 
     function newNFTMinterFacet(uint256 index) internal returns (address) {
-        if (index == 0) return address(new ClaimsFacet());
-        if (index == 1) return address(new JackpotFacet());
-        if (index == 2) return address(new MinterConfigsFacet());
-        if (index == 3) return address(new MintFacet());
+        if (index == 0) return address(new ClaimsFacet{ salt: 0 }());
+        if (index == 1) return address(new JackpotFacet{ salt: 0 }());
+        if (index == 2) return address(new MinterConfigsFacet{ salt: 0 }());
+        if (index == 3) return address(new MintFacet{ salt: 0 }());
         return address(0);
     }
 
-    function deployNFTMinter(address nft, address treasury, address game, address owner)
+    function deployNFTMinter(address diamondCutFacet, address nft, address treasury, address game, address owner)
         internal
         returns (address[] memory facets, address nftMinter)
     {
-        MinterInit init = new MinterInit();
+        MinterInit init = new MinterInit{ salt: 0 }();
         facets = new address[](4);
         for (uint256 i; i < 4; ++i) {
             facets[i] = newNFTMinterFacet(i);
         }
         nftMinter = deployDiamond(
+            "NFTMinter",
+            diamondCutFacet,
             facets,
             address(init),
             abi.encodeCall(MinterInit.init, (nft, TOKENS_IN_BATCH, treasury, game, _minterConfig())),
@@ -122,12 +127,15 @@ library DiamondDeployer {
         });
     }
 
-    function deployDiamond(address[] memory facets, address init, bytes memory initCallData, address owner)
-        internal
-        returns (address)
-    {
-        DiamondCutFacet cut = new DiamondCutFacet();
-        Diamond diamond = new Diamond(owner, address(cut));
+    function deployDiamond(
+        string memory name,
+        address cutFacet,
+        address[] memory facets,
+        address init,
+        bytes memory initCallData,
+        address owner
+    ) internal returns (address) {
+        Diamond diamond = new Diamond{ salt: keccak256(bytes(name)) }(owner, cutFacet);
         IDiamondCut.FacetCut[] memory cuts = new IDiamondCut.FacetCut[](facets.length);
         for (uint256 i; i < facets.length; ++i) {
             cuts[i] = IDiamondCut.FacetCut(facets[i], IDiamondCut.FacetCutAction.Add, IFacet(facets[i]).selectors());
