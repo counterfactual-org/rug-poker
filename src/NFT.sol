@@ -75,7 +75,7 @@ contract NFT is ERC721, Owned, IRandomizerCallback, INFT {
     }
 
     function estimateRandomizerFee() public view returns (uint256) {
-        return IRandomizer(randomizer).estimateFee(randomizerGasLimit);
+        return _staging ? 0 : IRandomizer(randomizer).estimateFee(randomizerGasLimit);
     }
 
     function transferFrom(address from, address to, uint256 id) public override {
@@ -118,12 +118,6 @@ contract NFT is ERC721, Owned, IRandomizerCallback, INFT {
         if (amount == 0 || amount > MINTING_LIMIT) revert InvalidAmount();
         if (to == address(0)) revert InvalidAddress();
 
-        uint256 fee = estimateRandomizerFee();
-        if (address(this).balance < fee) revert InsufficientFee();
-
-        address _randomizer = randomizer;
-        IRandomizer(_randomizer).clientDeposit{ value: fee }(address(this));
-
         uint256 tokenId = nextTokenId;
         if (_staging) {
             // use psuedo-random value in staging env
@@ -131,6 +125,11 @@ contract NFT is ERC721, Owned, IRandomizerCallback, INFT {
             _randomizerCallback(RandomizerRequest(tokenId, amount, to, msg.sender), value);
             emit Draw(tokenId, amount, to, 0);
         } else {
+            uint256 fee = estimateRandomizerFee();
+            if (address(this).balance < fee) revert InsufficientFee();
+
+            address _randomizer = randomizer;
+            IRandomizer(_randomizer).clientDeposit{ value: fee }(address(this));
             uint256 randomizerId = IRandomizer(_randomizer).request(randomizerGasLimit);
             pendingRandomizerRequests[randomizerId] = RandomizerRequest(tokenId, amount, to, msg.sender);
 
