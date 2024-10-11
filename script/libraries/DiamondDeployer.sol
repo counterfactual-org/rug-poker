@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import { Diamond } from "diamond/Diamond.sol";
 import { IDiamondCut } from "diamond/interfaces/IDiamondCut.sol";
+import { IDiamondLoupe } from "diamond/interfaces/IDiamondLoupe.sol";
 import { GameConfig, GameInit } from "src/game/GameInit.sol";
 import { AttacksFacet } from "src/game/facets/AttacksFacet.sol";
 import { CardsFacet } from "src/game/facets/CardsFacet.sol";
@@ -41,6 +42,7 @@ library DiamondDeployer {
     function deployGame(
         bool staging,
         address diamondCutFacet,
+        address diamondLoupeFacet,
         address nft,
         address randomizer,
         address evaluator9,
@@ -56,6 +58,7 @@ library DiamondDeployer {
         game = deployDiamond(
             "Game",
             diamondCutFacet,
+            diamondLoupeFacet,
             facets,
             address(init),
             abi.encodeCall(
@@ -93,10 +96,14 @@ library DiamondDeployer {
         return address(0);
     }
 
-    function deployNFTMinter(address diamondCutFacet, address nft, address treasury, address game, address owner)
-        internal
-        returns (address[] memory facets, address nftMinter)
-    {
+    function deployNFTMinter(
+        address diamondCutFacet,
+        address diamondLoupeFacet,
+        address nft,
+        address treasury,
+        address game,
+        address owner
+    ) internal returns (address[] memory facets, address nftMinter) {
         MinterInit init = new MinterInit{ salt: 0 }();
         facets = new address[](4);
         for (uint256 i; i < 4; ++i) {
@@ -105,6 +112,7 @@ library DiamondDeployer {
         nftMinter = deployDiamond(
             "NFTMinter",
             diamondCutFacet,
+            diamondLoupeFacet,
             facets,
             address(init),
             abi.encodeCall(MinterInit.init, (nft, TOKENS_IN_BATCH, treasury, game, _minterConfig())),
@@ -130,15 +138,22 @@ library DiamondDeployer {
     function deployDiamond(
         string memory name,
         address cutFacet,
+        address loupeFacet,
         address[] memory facets,
         address init,
         bytes memory initCallData,
         address owner
     ) internal returns (address) {
         Diamond diamond = new Diamond{ salt: keccak256(bytes(name)) }(owner, cutFacet);
-        IDiamondCut.FacetCut[] memory cuts = new IDiamondCut.FacetCut[](facets.length);
+        IDiamondCut.FacetCut[] memory cuts = new IDiamondCut.FacetCut[](facets.length + 1);
+        bytes4[] memory loupeSelectors = new bytes4[](4);
+        loupeSelectors[0] = IDiamondLoupe.facets.selector;
+        loupeSelectors[1] = IDiamondLoupe.facetFunctionSelectors.selector;
+        loupeSelectors[2] = IDiamondLoupe.facetAddresses.selector;
+        loupeSelectors[3] = IDiamondLoupe.facetAddress.selector;
+        cuts[0] = IDiamondCut.FacetCut(loupeFacet, IDiamondCut.FacetCutAction.Add, loupeSelectors);
         for (uint256 i; i < facets.length; ++i) {
-            cuts[i] = IDiamondCut.FacetCut(facets[i], IDiamondCut.FacetCutAction.Add, IFacet(facets[i]).selectors());
+            cuts[i + 1] = IDiamondCut.FacetCut(facets[i], IDiamondCut.FacetCutAction.Add, IFacet(facets[i]).selectors());
         }
         IDiamondCut(address(diamond)).diamondCut(cuts, init, initCallData);
         return address(diamond);

@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import { BaseScript, console } from "./BaseScript.s.sol";
 import { DiamondDeployer } from "./libraries/DiamondDeployer.sol";
 import { DiamondCutFacet } from "diamond/facets/DiamondCutFacet.sol";
+import { DiamondLoupeFacet } from "diamond/facets/DiamondLoupeFacet.sol";
 
 import { LibString } from "solmate/utils/LibString.sol";
 import { AuctionHouse } from "src/AuctionHouse.sol";
@@ -27,6 +28,10 @@ contract DeployScript is BaseScript {
         if (cut.code.length == 0) {
             cut = address(new DiamondCutFacet{ salt: 0 }());
         }
+        address loupe = vm.computeCreate2Address(0, keccak256(vm.getCode("DiamondLoupeFacet")));
+        if (loupe.code.length == 0) {
+            loupe = address(new DiamondLoupeFacet{ salt: 0 }());
+        }
 
         address nft = _loadDeployment("NFT");
         if (nft == address(0)) {
@@ -40,7 +45,7 @@ contract DeployScript is BaseScript {
         address game = _loadDeployment("Game");
         if (game == address(0)) {
             (facets, game) = DiamondDeployer.deployGame(
-                staging, cut, nft, randomizer, evaluator9, treasury, MIN_RANDOMIZER_GAS_LIMIT, owner
+                staging, cut, loupe, nft, randomizer, evaluator9, treasury, MIN_RANDOMIZER_GAS_LIMIT, owner
             );
             _saveDeployment("Game", address(game));
             _saveFacets("Game", facets);
@@ -48,7 +53,7 @@ contract DeployScript is BaseScript {
 
         address nftMinter = _loadDeployment("NFTMinter");
         if (nftMinter == address(0)) {
-            (facets, nftMinter) = DiamondDeployer.deployNFTMinter(cut, nft, treasury, game, owner);
+            (facets, nftMinter) = DiamondDeployer.deployNFTMinter(cut, loupe, nft, treasury, game, owner);
             _saveDeployment("NFTMinter", address(nftMinter));
             _saveFacets("NFTMinter", facets);
             NFT(nft).updateMinter(nftMinter);
