@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import { BaseScript } from "./BaseScript.s.sol";
 import { DiamondDeployer } from "./libraries/DiamondDeployer.sol";
-
+import { IDiamond } from "diamond/interfaces/IDiamond.sol";
 import { IDiamondCut } from "diamond/interfaces/IDiamondCut.sol";
 import { AttacksFacet } from "src/game/facets/AttacksFacet.sol";
 import { CardsFacet } from "src/game/facets/CardsFacet.sol";
@@ -57,13 +57,13 @@ contract UpgradeScript is BaseScript {
         }
 
         if (add.length > 0) {
-            cuts.push(IDiamondCut.FacetCut(facet, IDiamondCut.FacetCutAction.Add, add));
+            cuts.push(IDiamond.FacetCut(facet, IDiamond.FacetCutAction.Add, add));
         }
         if (replace.length > 0) {
-            cuts.push(IDiamondCut.FacetCut(facet, IDiamondCut.FacetCutAction.Replace, replace));
+            cuts.push(IDiamond.FacetCut(facet, IDiamond.FacetCutAction.Replace, replace));
         }
         if (remove.length > 0) {
-            cuts.push(IDiamondCut.FacetCut(facet, IDiamondCut.FacetCutAction.Remove, remove));
+            cuts.push(IDiamond.FacetCut(facet, IDiamond.FacetCutAction.Remove, remove));
         }
         IDiamondCut(diamond).diamondCut(cuts, address(0), "");
         facets[index] = facet;

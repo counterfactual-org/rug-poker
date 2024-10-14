@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import { Diamond } from "diamond/Diamond.sol";
+import { Diamond, DiamondArgs } from "diamond/Diamond.sol";
+import { IDiamond } from "diamond/interfaces/IDiamond.sol";
 import { IDiamondCut } from "diamond/interfaces/IDiamondCut.sol";
 import { IDiamondLoupe } from "diamond/interfaces/IDiamondLoupe.sol";
 import { GameConfig, GameInit } from "src/game/GameInit.sol";
@@ -144,18 +145,20 @@ library DiamondDeployer {
         bytes memory initCallData,
         address owner
     ) internal returns (address) {
-        Diamond diamond = new Diamond{ salt: keccak256(bytes(name)) }(owner, cutFacet);
-        IDiamondCut.FacetCut[] memory cuts = new IDiamondCut.FacetCut[](facets.length + 1);
+        IDiamond.FacetCut[] memory cuts = new IDiamond.FacetCut[](facets.length + 2);
+        bytes4[] memory cutSelectors = new bytes4[](1);
+        cutSelectors[0] = IDiamondCut.diamondCut.selector;
+        cuts[0] = IDiamond.FacetCut(cutFacet, IDiamond.FacetCutAction.Add, cutSelectors);
         bytes4[] memory loupeSelectors = new bytes4[](4);
         loupeSelectors[0] = IDiamondLoupe.facets.selector;
         loupeSelectors[1] = IDiamondLoupe.facetFunctionSelectors.selector;
         loupeSelectors[2] = IDiamondLoupe.facetAddresses.selector;
         loupeSelectors[3] = IDiamondLoupe.facetAddress.selector;
-        cuts[0] = IDiamondCut.FacetCut(loupeFacet, IDiamondCut.FacetCutAction.Add, loupeSelectors);
+        cuts[1] = IDiamond.FacetCut(loupeFacet, IDiamond.FacetCutAction.Add, loupeSelectors);
         for (uint256 i; i < facets.length; ++i) {
-            cuts[i + 1] = IDiamondCut.FacetCut(facets[i], IDiamondCut.FacetCutAction.Add, IFacet(facets[i]).selectors());
+            cuts[i + 2] = IDiamond.FacetCut(facets[i], IDiamond.FacetCutAction.Add, IFacet(facets[i]).selectors());
         }
-        IDiamondCut(address(diamond)).diamondCut(cuts, init, initCallData);
+        Diamond diamond = new Diamond{ salt: keccak256(bytes(name)) }(cuts, DiamondArgs(owner, init, initCallData));
         return address(diamond);
     }
 }

@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import { GameMock } from "./mocks/GameMock.sol";
 import { RandomizerMock } from "./mocks/RandomizerMock.sol";
 import { DiamondCutFacet } from "diamond/facets/DiamondCutFacet.sol";
+import { DiamondLoupeFacet } from "diamond/facets/DiamondLoupeFacet.sol";
 import { Test, console } from "forge-std/Test.sol";
 
 import {
@@ -61,7 +62,12 @@ contract NFTMinterTest is Test {
         nft = new NFT(false, address(randomizer), MIN_RANDOMIZER_GAS_LIMIT, address(0), "NFT", "NFT", owner);
         game = new GameMock();
         (, minter) = DiamondDeployer.deployNFTMinter(
-            address(new DiamondCutFacet()), address(nft), treasury, address(game), owner
+            address(new DiamondCutFacet()),
+            address(new DiamondLoupeFacet()),
+            address(nft),
+            treasury,
+            address(game),
+            owner
         );
 
         vm.deal(alice, 10_000e18);
