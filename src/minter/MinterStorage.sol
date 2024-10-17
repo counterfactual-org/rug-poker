@@ -13,7 +13,7 @@ struct MinterStorage {
     mapping(bytes32 merkleRoot => bool) isMerkleRoot;
     mapping(bytes32 merkleRoot => mapping(address account => bool)) hasClaimed;
     mapping(bytes32 merkleRoot => uint256) totalClaimed;
-    mapping(uint256 id => bool) wasClaimed;
+    mapping(uint256 id => bool) isAirdrop;
     // freeMintings
     mapping(address account => uint256) bogo;
     // jackpot

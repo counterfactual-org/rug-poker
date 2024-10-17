@@ -34,7 +34,22 @@ contract CardsFacet is BaseGameFacet {
     }
 
     function getCard(uint256 tokenId) external view returns (Card memory) {
-        return Cards.get(tokenId);
+        Card storage card = Cards.get(tokenId);
+        if (card.initialized()) {
+            return card;
+        }
+        return Card(
+            tokenId,
+            address(0),
+            Cards.deriveDurability(tokenId),
+            Cards.derivePower(tokenId),
+            Cards.deriveRank(tokenId),
+            Cards.deriveSuit(tokenId),
+            0,
+            0,
+            false,
+            0
+        );
     }
 
     function cardDurability(uint256 tokenId) external view returns (uint8) {

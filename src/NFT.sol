@@ -154,8 +154,7 @@ contract NFT is ERC721, Owned, IRandomizerCallback, INFT {
             uint256 tokenId = request.tokenId + i;
             _mint(request.to, tokenId);
 
-            bytes32 data = keccak256(abi.encodePacked(value, block.number, block.timestamp, tokenId));
-            dataOf[request.tokenId] = data;
+            dataOf[tokenId] = keccak256(abi.encodePacked(value, block.number, block.timestamp, tokenId));
         }
 
         emit Mint(request.tokenId, request.amount, request.to, request.minter);

@@ -63,7 +63,7 @@ contract UpgradeScript is BaseScript {
             cuts.push(IDiamond.FacetCut(facet, IDiamond.FacetCutAction.Replace, replace));
         }
         if (remove.length > 0) {
-            cuts.push(IDiamond.FacetCut(facet, IDiamond.FacetCutAction.Remove, remove));
+            cuts.push(IDiamond.FacetCut(address(0), IDiamond.FacetCutAction.Remove, remove));
         }
         IDiamondCut(diamond).diamondCut(cuts, address(0), "");
         facets[index] = facet;

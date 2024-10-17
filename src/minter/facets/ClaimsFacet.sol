@@ -22,7 +22,7 @@ contract ClaimsFacet is BaseMinterFacet {
         s[0] = this.isMerkleRoot.selector;
         s[1] = this.hasClaimed.selector;
         s[2] = this.totalClaimed.selector;
-        s[3] = this.wasClaimed.selector;
+        s[3] = this.isAirdrop.selector;
         s[4] = this.updateMerkleRoot.selector;
         s[5] = this.claim.selector;
     }
@@ -39,8 +39,8 @@ contract ClaimsFacet is BaseMinterFacet {
         return s.totalClaimed[merkleRoot];
     }
 
-    function wasClaimed(uint256 tokenId) external view returns (bool) {
-        return s.wasClaimed[tokenId];
+    function isAirdrop(uint256 tokenId) external view returns (bool) {
+        return s.isAirdrop[tokenId];
     }
 
     function updateMerkleRoot(bytes32 merkleRoot, bool _isMerkleRoot) external onlyOwner {
@@ -65,7 +65,7 @@ contract ClaimsFacet is BaseMinterFacet {
         INFT nft = MinterConfigs.nft();
         uint256 tokenId = nft.nextTokenId();
         for (uint256 i; i < amount; ++i) {
-            s.wasClaimed[tokenId + i] = true;
+            s.isAirdrop[tokenId + i] = true;
         }
 
         nft.draw{ value: INFT(nft).estimateRandomizerFee() }(amount, msg.sender);
