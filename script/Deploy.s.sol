@@ -49,6 +49,7 @@ contract DeployScript is BaseScript {
             );
             _saveDeployment("Game", address(game));
             _saveFacets("Game", facets);
+            NFT(nft).updateApp(game, true);
         }
 
         address nftMinter = _loadDeployment("NFTMinter");
@@ -76,6 +77,7 @@ contract DeployScript is BaseScript {
         if (auctionHouse == address(0)) {
             auctionHouse = address(new AuctionHouse{ salt: 0 }(nft, treasury, owner));
             _saveDeployment("AuctionHouse", address(auctionHouse));
+            NFT(nft).updateApp(auctionHouse, true);
         }
     }
 }

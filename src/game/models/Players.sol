@@ -15,6 +15,7 @@ library Players {
     using ArrayLib for uint256[];
     using Cards for Card;
 
+    event CreatePlayer(address indexed account);
     event PlayerGainXP(address indexed account, uint32 xp);
     event PlayerLevelUp(address indexed account, uint8 level);
     event AdjustCards(address indexed account, uint256 cards);
@@ -68,6 +69,7 @@ library Players {
         self.avatarTokenId = type(uint256).max;
         updateUsername(self, username);
 
+        emit CreatePlayer(account);
         emit PlayerLevelUp(account, 1);
     }
 

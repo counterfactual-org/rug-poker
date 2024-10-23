@@ -27,6 +27,7 @@ contract NFT is ERC721, Owned, IRandomizerCallback, INFT {
     address public tokenURIRenderer;
 
     address public minter;
+    mapping(address => bool) public isApp;
 
     mapping(uint256 randomizerId => RandomizerRequest) public pendingRandomizerRequests;
 
@@ -37,6 +38,7 @@ contract NFT is ERC721, Owned, IRandomizerCallback, INFT {
     event UpdateRandomizerGasLimit(uint256 gasLimit);
     event UpdateTokenURIRenderer(address indexed tokenURIRenderer);
     event UpdateMinter(address indexed account);
+    event UpdateApp(address indexed account, bool indexed isApp);
     event Draw(uint256 indexed tokenId, uint256 amount, address indexed to, uint256 indexed randomizerId);
     event Mint(uint256 indexed tokenId, uint256 amount, address indexed to, address indexed minter);
 
@@ -79,7 +81,7 @@ contract NFT is ERC721, Owned, IRandomizerCallback, INFT {
     }
 
     function transferFrom(address from, address to, uint256 id) public override {
-        if (from != address(this) && to != address(this)) revert Forbidden();
+        if (!isApp[from] && !isApp[to]) revert Forbidden();
 
         super.transferFrom(from, to, id);
     }
@@ -106,6 +108,14 @@ contract NFT is ERC721, Owned, IRandomizerCallback, INFT {
         minter = account;
 
         emit UpdateMinter(account);
+    }
+
+    function updateApp(address account, bool _isApp) external onlyOwner {
+        if (account == address(0)) revert InvalidAddress();
+
+        isApp[account] = _isApp;
+
+        emit UpdateApp(account, _isApp);
     }
 
     function burn(uint256 id) external {
