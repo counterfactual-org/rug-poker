@@ -21,7 +21,7 @@ import { MinterConfigsFacet } from "src/minter/facets/MinterConfigsFacet.sol";
 
 library DiamondDeployer {
     uint256 private constant TOKENS_IN_BATCH = 1000;
-    uint256 private constant PRICE = 0.009e18;
+    uint256 private constant PRICE = 0.01e18;
     uint256 private constant CLAIM_LIMIT = 100;
     uint8 private constant SHARES_TREASURY = 30;
     uint8 private constant SHARES_GAME = 50;
@@ -63,29 +63,30 @@ library DiamondDeployer {
             facets,
             address(init),
             abi.encodeCall(
-                GameInit.init, (staging, nft, randomizer, evaluator9, treasury, randomizerGasLimit, _gameConfig())
+                GameInit.init,
+                (staging, nft, randomizer, evaluator9, treasury, randomizerGasLimit, _gameConfig(staging))
             ),
             owner
         );
     }
 
-    function _gameConfig() private pure returns (GameConfig memory) {
+    function _gameConfig(bool staging) private pure returns (GameConfig memory) {
         return GameConfig({
             maxJokers: 1,
             minBootyPercentage: 10,
-            maxBootyPercentage: 90,
+            maxBootyPercentage: 30,
             minDurability: 3,
             maxDurability: 8,
             minDuration: 1 weeks,
             minPower: 10_000,
             maxPower: 100_000,
-            minPowerUpPercentage: 3,
-            maxPowerUpPercentage: 33,
+            minPowerUpPercentage: 10,
+            maxPowerUpPercentage: 30,
             maxPlayerLevel: 50,
             maxCardLevel: 10,
             bogoPercentage: 10,
-            attackPeriod: 1 hours,
-            defensePeriod: 24 hours
+            attackPeriod: staging ? 5 minutes : 1 hours,
+            defensePeriod: staging ? 1 hours : 24 hours
         });
     }
 
@@ -122,14 +123,14 @@ library DiamondDeployer {
     }
 
     function _minterConfig() private view returns (MinterConfig memory) {
-        uint256 initialBonusUntil = (block.timestamp + 2 weeks) * 1 days / 1 days;
+        uint256 initialDiscountUntil = (block.timestamp + 4 weeks) * 1 days / 1 days;
         uint8[] memory winnerRatios = new uint8[](3);
         winnerRatios[0] = WINNER_RATIO_GOLD;
         winnerRatios[1] = WINNER_RATIO_SILVER;
         winnerRatios[2] = WINNER_RATIO_BRONZE;
         return MinterConfig({
             price: PRICE,
-            initialBonusUntil: initialBonusUntil,
+            initialDiscountUntil: initialDiscountUntil,
             claimLimit: CLAIM_LIMIT,
             shares: [SHARES_TREASURY, SHARES_GAME],
             winnerRatios: winnerRatios

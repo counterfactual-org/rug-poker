@@ -53,6 +53,9 @@ contract MintFacet is BaseMinterFacet {
 
         MinterConfig memory c = MinterConfigs.latest();
         uint256 totalPrice = amount * c.price;
+        if (block.timestamp < c.initialDiscountUntil) {
+            totalPrice = totalPrice * 7 / 10;
+        }
         if (msg.value < totalPrice) revert InsufficientValue();
 
         TransferLib.transferETH(s.treasury, totalPrice * c.shares[SHARES_TREASURY] / 100, address(0));
@@ -63,9 +66,6 @@ contract MintFacet is BaseMinterFacet {
         }
 
         uint256 bonus = (amount >= 10 ? 5 : amount >= 5 ? 2 : amount >= 3 ? 1 : 0);
-        if (block.timestamp < c.initialBonusUntil) {
-            bonus = bonus * 2;
-        }
         INFT nft = MinterConfigs.nft();
         nft.draw{ value: nft.estimateRandomizerFee() }(amount + bonus + (useBogo ? 1 : 0), msg.sender);
 

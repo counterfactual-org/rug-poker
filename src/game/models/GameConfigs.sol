@@ -75,7 +75,6 @@ library GameConfigs {
             revert InvalidPercentage();
         }
         if (c.bogoPercentage > 100) revert InvalidPercentage();
-        if (c.attackPeriod < 1 hours) revert InvalidPeriod();
 
         GameStorage storage s = gameStorage();
         uint256 version = s.configVersion + 1;

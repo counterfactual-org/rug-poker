@@ -17,6 +17,11 @@ library Attacks {
 
     uint32 constant MAX_RANK = 7462;
 
+    event DebugBooty(
+        uint256 indexed attackId, uint256 attackingBootyPoints, uint256 defendingBootyPoints, uint256 bootyPercentage
+    );
+    event OnFlop(uint256 indexed attackId, uint8 indexed round, uint8 index, uint8 card);
+    event OnShowDown(uint256 indexed attackId, uint8 index, uint8 card);
     event EvaluateHands(
         uint256 indexed attackId,
         uint8 indexed round,
@@ -26,8 +31,10 @@ library Attacks {
         uint256 rankDefense
     );
     event DetermineAttackResult(uint256 indexed attackId, AttackResult indexed result);
+    event Finalize(uint256 indexed attackId);
 
     error InvalidAddress();
+    error Attacking();
     error Forbidden();
     error AttackTimeover();
     error DefenseTimeover();
@@ -51,13 +58,18 @@ library Attacks {
         GameStorage storage s = gameStorage();
 
         if (defender == address(0) || attacker == defender) revert InvalidAddress();
+        if (s.attacking[attacker][defender]) revert Attacking();
+
+        Players.get(defender).assertNotExceedingMaxIncomingAttacks();
 
         uint256 id = s.lastAttackId + 1;
         s.attacks[id] =
             Attack_(id, AttackStatus.Flopping, AttackResult.None, attacker, defender, uint64(block.timestamp));
         s.lastAttackId = id;
 
-        Cards.populateAllCards(s.allCards[id]);
+        Cards.populateAllCards(s.remainingCards[id]);
+
+        s.attacking[attacker][defender] = true;
 
         return s.attacks[id];
     }
@@ -75,10 +87,12 @@ library Attacks {
 
         GameStorage storage s = gameStorage();
         uint256 id = self.id;
-        uint8[] storage allCards = s.allCards[id];
+        uint8[] storage remainingCards = s.remainingCards[id];
         for (uint256 i; i < ATTACK_ROUNDS; ++i) {
             for (uint256 j; j < FLOPPED_CARDS; ++j) {
-                s.communityCards[id][i].push(Cards.drawCard(allCards));
+                uint8 card = Cards.drawCard(remainingCards);
+                s.communityCards[id][i].push(card);
+                emit OnFlop(id, uint8(i), uint8(j), card);
             }
         }
     }
@@ -87,13 +101,14 @@ library Attacks {
         internal
         returns (bool defending)
     {
+        (uint256 id, address attacker, address defender) = (self.id, self.attacker, self.defender);
         GameConfig memory c = GameConfigs.latest();
         if (self.status == AttackStatus.WaitingForAttack) {
-            if (msg.sender != self.attacker) revert Forbidden();
+            if (msg.sender != attacker) revert Forbidden();
             if (self.startedAt + c.attackPeriod < block.timestamp) revert AttackTimeover();
             self.status = AttackStatus.WaitingForDefense;
         } else if (self.status == AttackStatus.WaitingForDefense) {
-            if (msg.sender != self.defender) revert Forbidden();
+            if (msg.sender != defender) revert Forbidden();
             if (self.startedAt + c.defensePeriod < block.timestamp) revert DefenseTimeover();
             self.status = AttackStatus.ShowingDown;
             defending = true;
@@ -101,10 +116,11 @@ library Attacks {
             revert InvalidAttackStatus();
         }
 
+        Players.get(attacker).addOutgoingAttack(id);
+        Players.get(defender).addIncomingAttack(id);
+
         Cards.assertValidNumberOfCards(tokenIds.length);
         Cards.assertNotDuplicate(tokenIds);
-
-        uint256 id = self.id;
         _checkCards(id, tokenIds, jokerCards);
 
         GameStorage storage s = gameStorage();
@@ -121,7 +137,8 @@ library Attacks {
         if (jokerCards.length > GameConfigs.latest().maxJokers) revert InvalidNumberOfJokers();
 
         uint256 jokerIndex;
-        uint8[] storage allCards = gameStorage().allCards[id];
+        GameStorage storage s = gameStorage();
+        uint8[] storage remainingCards = s.remainingCards[id];
         for (uint256 i; i < tokenIds.length; ++i) {
             uint8 value;
             Card storage card = Cards.get(tokenIds[i]);
@@ -133,7 +150,7 @@ library Attacks {
             } else {
                 value = card.toValue();
             }
-            Cards.discardCard(allCards, value);
+            Cards.discardCard(s.communityCards[id], remainingCards, value);
         }
     }
 
@@ -148,11 +165,13 @@ library Attacks {
 
         GameStorage storage s = gameStorage();
         uint256 id = self.id;
-        uint8[] storage allCards = s.allCards[id];
-        for (uint256 i; i < ATTACK_ROUNDS; ++i) {
-            for (uint256 j; j < COMMUNITY_CARDS - FLOPPED_CARDS; ++j) {
-                s.communityCards[id][i].push(Cards.drawCard(allCards));
+        uint8[] storage remainingCards = s.remainingCards[id];
+        for (uint256 i; i < COMMUNITY_CARDS - FLOPPED_CARDS; ++i) {
+            uint8 card = Cards.drawCard(remainingCards);
+            for (uint256 j; j < ATTACK_ROUNDS; ++j) {
+                s.communityCards[id][j].push(card);
             }
+            emit OnShowDown(id, uint8(i), card);
         }
 
         AttackResult result = determineAttackResult(self);
@@ -194,6 +213,12 @@ library Attacks {
         result = AttackResult.Draw;
         if (attackerWon > attackerLost) {
             _processSuccess(attacker, defender, attackingTokenIds, defendingTokenIds);
+            emit DebugBooty(
+                self.id,
+                _bootyPoints(attackingTokenIds),
+                _bootyPoints(defendingTokenIds),
+                _bootyPercentage(_bootyPoints(attackingTokenIds), _bootyPoints(defendingTokenIds))
+            );
             result = AttackResult.Success;
         } else if (attackerWon < attackerLost) {
             _processFail(defender, attackingTokenIds, defendingTokenIds);
@@ -277,6 +302,7 @@ library Attacks {
         }
 
         self.status = AttackStatus.Finalized;
+        self.result = result;
 
         GameStorage storage s = gameStorage();
 
@@ -285,15 +311,23 @@ library Attacks {
         Player storage d = Players.get(defender);
         d.updateLastDefendedAt();
         d.removeIncomingAttack(self.id);
+        s.attacking[attacker][defender] = false;
 
-        if (result == AttackResult.Success) {
-            for (uint256 i; i < s.defendingTokenIds[id].length; ++i) {
-                Cards.get(s.defendingTokenIds[id][i]).spend();
-            }
-        } else if (result == AttackResult.Fail) {
-            for (uint256 i; i < s.attackingTokenIds[id].length; ++i) {
-                Cards.get(s.attackingTokenIds[id][i]).spend();
+        for (uint256 i; i < s.attackingTokenIds[id].length; ++i) {
+            Card storage card = Cards.get(s.attackingTokenIds[id][i]);
+            card.clearUnderuse();
+            if (result == AttackResult.Fail) {
+                card.spend();
             }
         }
+        for (uint256 i; i < s.defendingTokenIds[id].length; ++i) {
+            Card storage card = Cards.get(s.defendingTokenIds[id][i]);
+            card.clearUnderuse();
+            if (result == AttackResult.Success) {
+                card.spend();
+            }
+        }
+
+        emit Finalize(id);
     }
 }

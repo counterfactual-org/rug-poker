@@ -24,7 +24,7 @@ struct MinterStorage {
 
 struct MinterConfig {
     uint256 price;
-    uint256 initialBonusUntil;
+    uint256 initialDiscountUntil;
     uint256 claimLimit;
     uint8[2] shares;
     uint8[] winnerRatios;

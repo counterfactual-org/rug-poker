@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.24;
 
+import { HOLE_CARDS } from "../GameConstants.sol";
+import { GameStorage } from "../GameStorage.sol";
 import { AttackResult, AttackStatus, Attack_, Attacks } from "../models/Attacks.sol";
 import { Card, Cards } from "../models/Cards.sol";
 import { GameConfig, GameConfigs } from "../models/GameConfigs.sol";
@@ -15,32 +17,52 @@ contract AttacksFacet is BaseGameFacet {
     using Cards for Card;
     using Attacks for Attack_;
 
-    event Flop(uint256 indexed id, address indexed attacker, address indexed defender, uint256[] tokenIds);
+    event Flop(uint256 indexed attackId, address indexed attacker, address indexed defender);
     event Submit(uint256 indexed attackId, address indexed from, uint256[] tokenIds, uint8[] jokerCards);
     event ShowDown(uint256 indexed attackId, uint256 randomizerId);
-    event FinalizeAttack(uint256 indexed id);
 
     function selectors() external pure override returns (bytes4[] memory s) {
-        s = new bytes4[](7);
-        s[0] = this.attackingTokenIdsUsedIn.selector;
-        s[1] = this.defendingTokenIdsUsedIn.selector;
-        s[2] = this.incomingAttackIdsOf.selector;
-        s[3] = this.outgoingAttackIdsOf.selector;
-        s[4] = this.flop.selector;
-        s[5] = this.submit.selector;
-        s[6] = this.finalize.selector;
+        s = new bytes4[](13);
+        s[0] = this.getAttack.selector;
+        s[1] = this.attackingTokenIds.selector;
+        s[2] = this.defendingTokenIds.selector;
+        s[3] = this.remainingCards.selector;
+        s[4] = this.attackingJokerCards.selector;
+        s[5] = this.defendingJokerCards.selector;
+        s[6] = this.communityCards.selector;
+        s[7] = this.incomingAttackIdsOf.selector;
+        s[8] = this.outgoingAttackIdsOf.selector;
+        s[9] = this.flop.selector;
+        s[10] = this.submit.selector;
+        s[11] = this.finalize.selector;
     }
 
-    function attackingTokenIdsUsedIn(uint256 attackId) external view returns (uint256[] memory) {
+    function getAttack(uint256 attackId) external view returns (Attack_ memory) {
+        return Attacks.get(attackId);
+    }
+
+    function attackingTokenIds(uint256 attackId) external view returns (uint256[] memory) {
         return s.attackingTokenIds[attackId];
     }
 
-    function defendingTokenIdsUsedIn(uint256 attackId) external view returns (uint256[] memory) {
+    function defendingTokenIds(uint256 attackId) external view returns (uint256[] memory) {
         return s.defendingTokenIds[attackId];
     }
 
-    function defendingJokerCardsUsedIn(uint256 attackId) external view returns (uint8[] memory) {
+    function remainingCards(uint256 attackId) external view returns (uint8[] memory) {
+        return s.remainingCards[attackId];
+    }
+
+    function attackingJokerCards(uint256 attackId) external view returns (uint8[] memory) {
+        return s.attackingJokerCards[attackId];
+    }
+
+    function defendingJokerCards(uint256 attackId) external view returns (uint8[] memory) {
         return s.defendingJokerCards[attackId];
+    }
+
+    function communityCards(uint256 attackId, uint256 round) external view returns (uint8[] memory) {
+        return s.communityCards[attackId][round];
     }
 
     function incomingAttackIdsOf(address account) external view returns (uint256[] memory) {
@@ -51,7 +73,7 @@ contract AttacksFacet is BaseGameFacet {
         return s.outgoingAttackIds[account];
     }
 
-    function flop(address defender, uint256[] memory tokenIds) external payable {
+    function flop(address defender) external payable {
         Player storage player = Players.getOrRevert(msg.sender);
         Player storage opponent = Players.getOrRevert(defender);
 
@@ -62,7 +84,7 @@ contract AttacksFacet is BaseGameFacet {
         uint256 id = a.id;
         RandomizerRequests.request(RequestAction.Flop, id);
 
-        emit Flop(id, msg.sender, defender, tokenIds);
+        emit Flop(id, msg.sender, defender);
     }
 
     function submit(uint256 attackId, uint256[] memory tokenIds, uint8[] memory jokerCards) external payable {
@@ -87,12 +109,10 @@ contract AttacksFacet is BaseGameFacet {
 
         if (a.status == AttackStatus.WaitingForAttack) {
             a.finalize(AttackResult.Fail);
+            Rewards.moveAccReward(a.attacker, a.defender, GameConfigs.latest().maxBootyPercentage);
         } else if (a.status == AttackStatus.WaitingForDefense) {
             a.finalize(AttackResult.Success);
+            Rewards.moveAccReward(a.defender, a.attacker, GameConfigs.latest().maxBootyPercentage);
         }
-
-        Rewards.moveAccReward(a.defender, a.attacker, GameConfigs.latest().maxBootyPercentage);
-
-        emit FinalizeAttack(attackId);
     }
 }

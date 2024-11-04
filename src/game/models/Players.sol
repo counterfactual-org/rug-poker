@@ -27,6 +27,9 @@ library Players {
     event RemoveIncomingAttack(address indexed account, uint256 attackId);
     event AddOutgoingAttack(address indexed account, uint256 attackId);
     event RemoveOutgoingAttack(address indexed account, uint256 attackId);
+    event DebugCheckpointPlayer(
+        address indexed account, uint256 shares, uint256 accRewardPerShare, uint256 rewardDebt, uint256 accReward
+    );
     event CheckpointPlayer(address indexed account);
 
     error NotPlayer();
@@ -49,7 +52,7 @@ library Players {
     }
 
     function maxXP(uint8 level) internal pure returns (uint32 xp) {
-        return 1000 * level * level;
+        return 3000 * level * level;
     }
 
     function getOrRevert(address account) internal view returns (Player storage self) {
@@ -79,6 +82,11 @@ library Players {
 
     function assertNotInitialized(Player storage self) internal view {
         if (initialized(self)) revert PlayerInitialized();
+    }
+
+    function assertNotExceedingMaxIncomingAttacks(Player storage self) internal view {
+        GameStorage storage s = gameStorage();
+        if (s.incomingAttackIds[self.account].length >= self.maxCards / 2) revert ExceedingMaxAttacks();
     }
 
     function updateUsername(Player storage self, bytes32 username) internal {
@@ -272,6 +280,7 @@ library Players {
             s.accReward[account] += shares * s.accRewardPerShare / 1e12 - s.rewardDebt[account];
         }
 
+        emit DebugCheckpointPlayer(account, shares, s.accRewardPerShare, s.rewardDebt[account], s.accReward[account]);
         emit CheckpointPlayer(account);
     }
 }

@@ -76,31 +76,36 @@ library Cards {
         return value < MAX_CARD_VALUE;
     }
 
-    function populateAllCards(uint8[] storage allCards) internal {
+    function populateAllCards(uint8[] storage cards) internal {
         for (uint8 i; i < MAX_CARD_VALUE; ++i) {
-            allCards.push(i);
+            cards.push(i);
         }
     }
 
-    function drawCard(uint8[] storage allCards) internal returns (uint8 card) {
-        uint256 length = allCards.length;
+    function drawCard(uint8[] storage remainingCards) internal returns (uint8 card) {
+        uint256 length = remainingCards.length;
         uint8 index = Random.draw(0, uint8(length));
-        card = allCards[index];
-        allCards[index] = allCards[length - 1];
-        allCards.pop();
+        card = remainingCards[index];
+        remainingCards[index] = remainingCards[length - 1];
+        remainingCards.pop();
     }
 
-    function discardCard(uint8[] storage allCards, uint8 value) internal {
-        for (uint256 i; i < allCards.length; ++i) {
-            if (allCards[i] == value) {
-                uint256 length = allCards.length;
-                allCards[i] = allCards[length - 1];
-                allCards.pop();
+    function discardCard(uint8[][ATTACK_ROUNDS] storage communityCards, uint8[] storage remainingCards, uint8 value)
+        internal
+    {
+        for (uint256 i; i < ATTACK_ROUNDS; ++i) {
+            for (uint256 j; j < FLOPPED_CARDS; ++j) {
+                if (communityCards[i][j] == value) revert InvalidCard();
+            }
+        }
+        for (uint256 i; i < remainingCards.length; ++i) {
+            if (remainingCards[i] == value) {
+                uint256 length = remainingCards.length;
+                remainingCards[i] = remainingCards[length - 1];
+                remainingCards.pop();
                 return;
             }
         }
-
-        revert InvalidCard();
     }
 
     function evaluateHands(
@@ -125,13 +130,11 @@ library Cards {
         uint256[] memory defendingCards = new uint256[](CARDS);
         for (uint256 i; i < HOLE_CARDS; ++i) {
             Card storage attackingCard = Cards.get(attackingTokenIds[i]);
-            if (isJoker(attackingCard)) {
-                attackingCards[i] = attackingJokerCards[attackingJokerIndex++];
-            }
+            attackingCards[i] =
+                isJoker(attackingCard) ? attackingJokerCards[attackingJokerIndex++] : toValue(attackingCard);
             Card storage defendingCard = Cards.get(defendingTokenIds[i]);
-            if (isJoker(defendingCard)) {
-                defendingCards[i] = defendingJokerCards[defendingJokerIndex++];
-            }
+            defendingCards[i] =
+                isJoker(defendingCard) ? defendingJokerCards[defendingJokerIndex++] : toValue(defendingCard);
         }
 
         for (uint256 i; i < ATTACK_ROUNDS; ++i) {
@@ -272,8 +275,6 @@ library Cards {
     }
 
     function spend(Card storage self) internal {
-        self.underuse = false;
-
         uint8 durability = self.durability;
         self.durability = durability - 1;
 
@@ -291,7 +292,7 @@ library Cards {
             Players.get(from).decrementShares(_shares);
             Players.get(to).incrementShares(_shares);
 
-            emit MoveCard(from, from, self.tokenId);
+            emit MoveCard(from, to, self.tokenId);
         }
     }
 

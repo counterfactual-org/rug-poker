@@ -24,9 +24,12 @@ contract PlayersFacet is BaseGameFacet {
         return Players.get(account);
     }
 
-    function accRewardOf(address account) external view returns (uint256) {
-        uint256 _accRewardPerShare = Rewards.getAccRewardPerShare(address(this).balance);
-        return s.accReward[account] + s.shares[account] * _accRewardPerShare / 1e12 - s.rewardDebt[account];
+    function accRewardOf(address account, bool includePending) external view returns (uint256 reward) {
+        reward = s.accReward[account];
+        if (includePending) {
+            uint256 _accRewardPerShare = Rewards.getAccRewardPerShare(address(this).balance);
+            reward += s.shares[account] * _accRewardPerShare / 1e12 - s.rewardDebt[account];
+        }
     }
 
     function sharesSum() external view returns (uint256) {

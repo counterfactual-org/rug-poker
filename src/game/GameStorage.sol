@@ -27,12 +27,13 @@ struct GameStorage {
     mapping(address account => Player) players;
     mapping(address account => uint256[]) incomingAttackIds;
     mapping(address account => uint256[]) outgoingAttackIds;
+    mapping(address account => mapping(address defender => bool)) attacking;
     // cards
     mapping(uint256 tokenId => Card) cards;
     // attacks
     uint256 lastAttackId;
     mapping(uint256 attackId => Attack_) attacks;
-    mapping(uint256 attackId => uint8[]) allCards;
+    mapping(uint256 attackId => uint8[]) remainingCards;
     mapping(uint256 attackId => uint256[]) attackingTokenIds;
     mapping(uint256 attackId => uint256[]) defendingTokenIds;
     mapping(uint256 attackId => uint8[]) attackingJokerCards;
