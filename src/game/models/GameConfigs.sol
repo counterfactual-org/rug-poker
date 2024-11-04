@@ -14,7 +14,6 @@ library GameConfigs {
     error GasLimitTooLow();
     error InvalidAddress();
     error InvalidNumber();
-    error InvalidPeriod();
     error InvalidPercentage();
     error InvalidAttackFees();
 
@@ -70,7 +69,6 @@ library GameConfigs {
             revert InvalidPercentage();
         }
         if (c.minDurability == 0 || c.maxDurability <= c.minDurability) revert InvalidNumber();
-        if (c.minDuration < 1 days) revert InvalidPeriod();
         if (c.minPowerUpPercentage >= c.maxPowerUpPercentage || c.maxPowerUpPercentage >= 100) {
             revert InvalidPercentage();
         }

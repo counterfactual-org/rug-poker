@@ -14,10 +14,18 @@ abstract contract BaseScript is Script {
         address lzEndpoint;
     }
 
-    LZChain internal MAINNET =
-        LZChain(_isStaging() ? 8001 : 1, "Mainnet", 101, address(0x66A71Dcef29A0fFBDBE3c6a460a3B5BC225Cd675));
+    LZChain internal MAINNET = LZChain(1, "Mainnet", 30_101, address(0x1a44076050125825900e736c501f859c50fE728c));
+    LZChain internal MAINNET_STAGING =
+        LZChain(1, "Mainnet Staging", 30_101, address(0x1a44076050125825900e736c501f859c50fE728c));
+    LZChain internal SEPOLIA =
+        LZChain(11_155_111, "Sepolia", 40_161, address(0x6EDCE65403992e310A62460808c4b910D972f10f));
+
     LZChain internal ARBITRUM =
-        LZChain(_isStaging() ? 50_161 : 42_161, "Arbitrum", 110, address(0x3c2269811836af69497E5F486A85D7316753cf62));
+        LZChain(42_161, "Arbitrum Staging", 30_110, address(0x1a44076050125825900e736c501f859c50fE728c));
+    LZChain internal ARBITRUM_STAGING =
+        LZChain(50_161, "Arbitrum", 30_110, address(0x1a44076050125825900e736c501f859c50fE728c));
+    LZChain internal ARBITRUM_SEPOLIA =
+        LZChain(421_614, "Arbitrum Sepolia", 40_231, address(0x6EDCE65403992e310A62460808c4b910D972f10f));
 
     LZChain[] internal _chains;
 

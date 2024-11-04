@@ -77,7 +77,7 @@ library DiamondDeployer {
             maxBootyPercentage: 30,
             minDurability: 3,
             maxDurability: 8,
-            minDuration: 1 weeks,
+            minDuration: staging ? 1 hours : 1 weeks,
             minPower: 10_000,
             maxPower: 100_000,
             minPowerUpPercentage: 10,
