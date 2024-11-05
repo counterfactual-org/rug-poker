@@ -5,6 +5,7 @@ import { ITEM_ID_JOKERIZE, ITEM_ID_REPAIR } from "../GameConstants.sol";
 import { Card, Cards } from "../models/Cards.sol";
 import { GameConfigs } from "../models/GameConfigs.sol";
 import { Player, Players } from "../models/Players.sol";
+import { Rewards } from "../models/Rewards.sol";
 import { BaseGameFacet } from "./BaseGameFacet.sol";
 import { ERC1155Lib } from "src/libraries/ERC1155Lib.sol";
 
@@ -106,6 +107,7 @@ contract CardsFacet is BaseGameFacet {
         card.assertAvailable(msg.sender, false, true);
 
         player.checkpoint();
+        Rewards.claim(card.owner, card.power);
 
         card.remove();
 

@@ -65,11 +65,11 @@ library GameConfigs {
 
     function updateConfig(GameConfig memory c) internal {
         if (c.maxJokers == 0 || c.maxJokers > HOLE_CARDS) revert InvalidNumber();
-        if (c.minBootyPercentage >= c.maxBootyPercentage || c.maxBootyPercentage >= 100) {
+        if (c.minBootyPercentage >= c.maxBootyPercentage || c.maxBootyPercentage > 100) {
             revert InvalidPercentage();
         }
         if (c.minDurability == 0 || c.maxDurability <= c.minDurability) revert InvalidNumber();
-        if (c.minPowerUpPercentage >= c.maxPowerUpPercentage || c.maxPowerUpPercentage >= 100) {
+        if (c.minPowerUpPercentage >= c.maxPowerUpPercentage || c.maxPowerUpPercentage > 100) {
             revert InvalidPercentage();
         }
         if (c.bogoPercentage > 100) revert InvalidPercentage();

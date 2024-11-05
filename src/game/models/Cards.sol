@@ -27,7 +27,6 @@ import { GameConfig, GameConfigs } from "./GameConfigs.sol";
 import { Players } from "./Players.sol";
 import { Random } from "./Random.sol";
 import { RandomizerRequests } from "./RandomizerRequests.sol";
-import { Rewards } from "./Rewards.sol";
 import { IEvaluator } from "src/interfaces/IEvaluator.sol";
 import { INFT } from "src/interfaces/INFT.sol";
 import { INFTMinter } from "src/interfaces/INFTMinter.sol";
@@ -265,13 +264,9 @@ library Cards {
     }
 
     function remove(Card storage self) internal {
-        uint256 tokenId = self.tokenId;
-        if (!added(self)) revert CardNotAdded(tokenId);
+        if (!added(self)) revert CardNotAdded(self.tokenId);
 
-        address owner = self.owner;
         self.owner = address(0);
-
-        Rewards.claim(owner, self.power);
     }
 
     function spend(Card storage self) internal {
