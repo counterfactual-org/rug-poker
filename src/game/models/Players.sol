@@ -87,11 +87,6 @@ library Players {
         if (initialized(self)) revert PlayerInitialized();
     }
 
-    function assertNotExceedingMaxIncomingAttacks(Player storage self) internal view {
-        GameStorage storage s = gameStorage();
-        if (s.incomingAttackIds[self.account].length >= self.maxCards / 2) revert ExceedingMaxAttacks();
-    }
-
     function updateUsername(Player storage self, bytes32 username) internal {
         GameStorage storage s = gameStorage();
         if (!isValidUsername(username)) revert InvalidUsername();

@@ -60,14 +60,15 @@ library Attacks {
         if (defender == address(0) || attacker == defender) revert InvalidAddress();
         if (s.attacking[attacker][defender]) revert Attacking();
 
-        Players.get(defender).assertNotExceedingMaxIncomingAttacks();
-
         uint256 id = s.lastAttackId + 1;
         s.attacks[id] =
             Attack_(id, AttackStatus.Flopping, AttackResult.None, attacker, defender, uint64(block.timestamp));
         s.lastAttackId = id;
 
         Cards.populateAllCards(s.remainingCards[id]);
+
+        Players.get(attacker).addOutgoingAttack(id);
+        Players.get(defender).addIncomingAttack(id);
 
         s.attacking[attacker][defender] = true;
 
@@ -115,9 +116,6 @@ library Attacks {
         } else {
             revert InvalidAttackStatus();
         }
-
-        Players.get(attacker).addOutgoingAttack(id);
-        Players.get(defender).addIncomingAttack(id);
 
         Cards.assertValidNumberOfCards(tokenIds.length);
         Cards.assertNotDuplicate(tokenIds);
