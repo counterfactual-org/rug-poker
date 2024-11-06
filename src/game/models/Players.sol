@@ -18,9 +18,12 @@ library Players {
     event CreatePlayer(address indexed account);
     event PlayerGainXP(address indexed account, uint32 xp);
     event PlayerLevelUp(address indexed account, uint8 level);
-    event AdjustCards(address indexed account, uint256 cards);
-    event AdjustPoints(address indexed account, uint256 points);
-    event AdjustShares(address indexed account, uint256 sharesSum, uint256 shares);
+    event IncrementCards(address indexed account);
+    event DecrementCards(address indexed account);
+    event IncrementPoints(address indexed account, uint256 points);
+    event DecrementPoints(address indexed account, uint256 points);
+    event IncrementShares(address indexed account, uint256 shares);
+    event DecrementShares(address indexed account, uint256 shares);
     event UpdateUsername(address indexed account, bytes32 indexed username);
     event UpdateAvatar(address indexed account, uint256 tokenId);
     event AddIncomingAttack(address indexed account, uint256 attackId);
@@ -187,7 +190,7 @@ library Players {
         uint256 cards = self.cards + 1;
         self.cards = cards;
 
-        emit AdjustCards(self.account, cards);
+        emit IncrementCards(self.account);
     }
 
     function decrementCards(Player storage self) internal {
@@ -196,14 +199,14 @@ library Players {
         uint256 cards = self.cards - 1;
         self.cards = cards;
 
-        emit AdjustCards(self.account, cards);
+        emit DecrementCards(self.account);
     }
 
     function incrementPoints(Player storage self, uint256 points) internal {
         uint256 newPoints = self.points + points;
         self.points = newPoints;
 
-        emit AdjustPoints(self.account, newPoints);
+        emit IncrementPoints(self.account, points);
     }
 
     function decrementPoints(Player storage self, uint256 points) internal {
@@ -212,7 +215,7 @@ library Players {
         uint256 newPoints = self.points - points;
         self.points = newPoints;
 
-        emit AdjustPoints(self.account, newPoints);
+        emit DecrementPoints(self.account, points);
     }
 
     function incrementShares(Player storage self, uint256 shares) internal {
@@ -225,7 +228,7 @@ library Players {
         s.shares[account] = _shares;
         s.rewardDebt[account] = _shares * s.accRewardPerShare / 1e12;
 
-        emit AdjustShares(account, sharesSum, _shares);
+        emit IncrementShares(account, shares);
     }
 
     function decrementShares(Player storage self, uint256 shares) internal {
@@ -239,7 +242,7 @@ library Players {
         s.shares[account] = _shares;
         s.rewardDebt[account] = _shares * s.accRewardPerShare / 1e12;
 
-        emit AdjustShares(account, sharesSum, _shares);
+        emit DecrementShares(account, shares);
     }
 
     function gainXP(Player storage self, uint32 delta) internal {
