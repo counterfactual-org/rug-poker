@@ -133,7 +133,11 @@ struct RandomizerRequest {
 enum RequestAction {
     Invalid,
     Flop,
-    ShowDown
+    ShowDown,
+    RepairCard,
+    JokerizeCard,
+    MutateRank,
+    MutateSuit
 }
 
 struct RandomValue {

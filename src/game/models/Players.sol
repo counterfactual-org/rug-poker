@@ -55,7 +55,7 @@ library Players {
     }
 
     function maxXP(uint8 level) internal pure returns (uint32 xp) {
-        return 3000 * level * level;
+        return uint32(3000) * level * level;
     }
 
     function getOrRevert(address account) internal view returns (Player storage self) {
@@ -180,7 +180,11 @@ library Players {
     }
 
     function incrementCards(Player storage self) internal {
-        if (self.cards >= self.maxCards) revert ExceedingMaxCards();
+        incrementCards(self, false);
+    }
+
+    function incrementCards(Player storage self, bool force) internal {
+        if (!force && self.cards >= self.maxCards) revert ExceedingMaxCards();
 
         uint256 cards = self.cards + 1;
         self.cards = cards;

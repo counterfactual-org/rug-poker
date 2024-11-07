@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.24;
 
-import { ITEM_ID_JOKERIZE, ITEM_ID_REPAIR } from "../GameConstants.sol";
+import { ITEM_ID_CHANGE_RANK, ITEM_ID_CHANGE_SUIT, ITEM_ID_JOKERIZE, ITEM_ID_REPAIR } from "../GameConstants.sol";
 import { Card, Cards } from "../models/Cards.sol";
 import { GameConfigs } from "../models/GameConfigs.sol";
+import { Items } from "../models/Items.sol";
 import { Player, Players } from "../models/Players.sol";
-import { Rewards } from "../models/Rewards.sol";
+import { RandomizerRequests, RequestAction } from "../models/RandomizerRequests.sol";
 import { BaseGameFacet } from "./BaseGameFacet.sol";
 import { ERC1155Lib } from "src/libraries/ERC1155Lib.sol";
 
@@ -13,11 +14,10 @@ contract CardsFacet is BaseGameFacet {
     using Cards for Card;
     using Players for Player;
 
-    event AddCard(address indexed account, uint256 indexed tokenId);
-    event RemoveCard(address indexed account, uint256 indexed tokenId);
-    event BurnCard(address indexed account, uint256 indexed tokenId);
     event RepairCard(address indexed account, uint256 indexed tokenId, uint8 durability);
     event JokerizeCard(address indexed account, uint256 indexed tokenId);
+    event MutateCardRank(address indexed account, uint256 indexed tokenId);
+    event MutateCardSuit(address indexed account, uint256 indexed tokenId);
 
     function selectors() external pure override returns (bytes4[] memory s) {
         s = new bytes4[](11);
@@ -78,79 +78,34 @@ contract CardsFacet is BaseGameFacet {
     }
 
     function addCard(uint256 tokenId) external {
-        Player storage player = Players.getOrRevert(msg.sender);
-
-        player.checkpoint();
-        player.increaseBogoIfHasNotPlayed();
-
         Card storage card = Cards.get(tokenId);
         if (!card.initialized()) {
-            card = Cards.init(tokenId, msg.sender);
+            card = Cards.init(tokenId, address(0));
         }
-
-        GameConfigs.erc721().transferFrom(msg.sender, address(this), tokenId);
-
-        player.incrementCards();
-        player.incrementShares(card.power);
-        player.updateLastDefendedAt();
-
-        emit AddCard(msg.sender, tokenId);
+        card.add(msg.sender);
     }
 
     function removeCard(uint256 tokenId) external {
-        Player storage player = Players.getOrRevert(msg.sender);
-        if (player.avatarTokenId == tokenId) {
-            player.removeAvatar();
-        }
-
-        Card storage card = Cards.get(tokenId);
+        Card storage card = Cards.getOrRevert(tokenId);
         card.assertAvailable(msg.sender, false, true);
-
-        player.checkpoint();
-        Rewards.claim(card.owner, card.power);
-
         card.remove();
-
-        player.decrementCards();
-        // if it's wornOut, decrementShares was already called in card.spend() so we don't
-        if (!card.wornOut()) {
-            player.decrementShares(card.power);
-        }
-
-        GameConfigs.erc721().transferFrom(address(this), msg.sender, tokenId);
-
-        emit RemoveCard(msg.sender, tokenId);
     }
 
     function burnCard(uint256 tokenId) external {
-        Player storage player = Players.getOrRevert(msg.sender);
-        if (player.avatarTokenId == tokenId) {
-            player.removeAvatar();
-        }
-
-        Card storage card = Cards.get(tokenId);
+        Card storage card = Cards.getOrRevert(tokenId);
         card.assertAvailable(msg.sender, true, false);
-
-        player.checkpoint();
-
-        card.remove();
-
-        player.decrementCards();
-        player.decrementShares(card.power);
-
-        GameConfigs.nft().burn(tokenId);
-
-        emit BurnCard(msg.sender, tokenId);
+        card.burn();
     }
 
     function repairCard(uint256 tokenId) external {
         Players.getOrRevert(msg.sender);
 
-        Card storage card = Cards.get(tokenId);
-        card.assertAvailable(msg.sender, false, false);
+        Card storage card = Cards.getOrRevert(tokenId);
+        card.assertRepairable();
 
-        ERC1155Lib.burn(msg.sender, ITEM_ID_REPAIR, 1);
-        card.repair();
+        Items.spend(ITEM_ID_REPAIR, msg.sender);
+
+        RandomizerRequests.request(RequestAction.RepairCard, tokenId);
 
         emit RepairCard(msg.sender, tokenId, card.durability);
     }
@@ -158,12 +113,39 @@ contract CardsFacet is BaseGameFacet {
     function jokerizeCard(uint256 tokenId) external {
         Players.getOrRevert(msg.sender);
 
-        Card storage card = Cards.get(tokenId);
-        card.assertAvailable(msg.sender, false, false);
+        Card storage card = Cards.getOrRevert(tokenId);
+        card.assertJokerizable();
 
-        ERC1155Lib.burn(msg.sender, ITEM_ID_JOKERIZE, 1);
-        card.jokerize();
+        Items.spend(ITEM_ID_JOKERIZE, msg.sender);
+
+        RandomizerRequests.request(RequestAction.JokerizeCard, tokenId);
 
         emit JokerizeCard(msg.sender, tokenId);
+    }
+
+    function mutateCardRank(uint256 tokenId) external {
+        Players.getOrRevert(msg.sender);
+
+        Card storage card = Cards.getOrRevert(tokenId);
+        card.assertRankMutable();
+
+        Items.spend(ITEM_ID_CHANGE_RANK, msg.sender);
+
+        RandomizerRequests.request(RequestAction.MutateRank, tokenId);
+
+        emit MutateCardRank(msg.sender, tokenId);
+    }
+
+    function mutateCardSuit(uint256 tokenId) external {
+        Players.getOrRevert(msg.sender);
+
+        Card storage card = Cards.getOrRevert(tokenId);
+        card.assertSuitMutable();
+
+        Items.spend(ITEM_ID_CHANGE_RANK, msg.sender);
+
+        RandomizerRequests.request(RequestAction.MutateSuit, tokenId);
+
+        emit MutateCardSuit(msg.sender, tokenId);
     }
 }

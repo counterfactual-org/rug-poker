@@ -4,8 +4,8 @@ pragma solidity ^0.8.24;
 import { ItemEntry } from "../GameStorage.sol";
 import { GameConfigs } from "../models/GameConfigs.sol";
 import { Player, Players } from "../models/Players.sol";
+import { Rewards } from "../models/Rewards.sol";
 import { BaseGameFacet } from "./BaseGameFacet.sol";
-
 import { LibString } from "solmate/utils/LibString.sol";
 import { IRandomizerCallback } from "src/interfaces/IRandomizerCallback.sol";
 import { ERC1155Lib, ERC1155Storage } from "src/libraries/ERC1155Lib.sol";
@@ -95,8 +95,11 @@ contract ItemsFacet is BaseGameFacet {
         uint256 eth = amount * entry.eth;
         if (msg.value != eth) revert InsufficientETH();
 
-        TransferLib.transferETH(GameConfigs.treasury(), eth, address(0));
+        uint256 fee = eth * 3 / 10;
+        TransferLib.transferETH(GameConfigs.treasury(), fee, address(0));
         ERC1155Lib.mint(msg.sender, id, amount, "");
+
+        Rewards.checkpoint();
 
         emit BuyItemWithETH(id, amount, eth);
     }

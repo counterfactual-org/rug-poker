@@ -10,13 +10,13 @@ import { IRandomizer } from "src/interfaces/IRandomizer.sol";
 
 library RandomizerRequests {
     using Attacks for Attack_;
+    using Cards for Card;
 
     event RequestRandomizer(RequestAction indexed action, uint256 indexed id, uint256 indexed randomizerId);
 
     error InsufficientFee();
     error InvalidAction();
     error Forbidden();
-    error InvalidRandomizerId();
 
     function gameStorage() internal pure returns (GameStorage storage s) {
         assembly {
@@ -29,12 +29,15 @@ library RandomizerRequests {
         if (s.staging) {
             // use psuedo-random value in staging env
             Random.setSeed(keccak256(abi.encodePacked(id, block.number, block.timestamp)));
-            if (action == RequestAction.Flop) {
-                Attacks.get(id).onFlop();
-            } else {
-                Attacks.get(id).onShowDown();
-            }
-        } else if (action == RequestAction.Flop || action == RequestAction.ShowDown) {
+
+            emit RequestRandomizer(action, id, 0);
+
+            _onCallback(action, id);
+        } else if (
+            action == RequestAction.Flop || action == RequestAction.ShowDown || action == RequestAction.RepairCard
+                || action == RequestAction.JokerizeCard || action == RequestAction.MutateRank
+                || action == RequestAction.MutateSuit
+        ) {
             address _randomizer = s.randomizer;
             uint256 _randomizerGasLimit = s.randomizerGasLimit;
             uint256 fee = IRandomizer(_randomizer).estimateFee(_randomizerGasLimit);
@@ -60,12 +63,24 @@ library RandomizerRequests {
 
         Random.setSeed(value);
 
-        if (r.action == RequestAction.Flop) {
-            Attacks.get(r.id).onFlop();
-        } else if (r.action == RequestAction.ShowDown) {
-            Attacks.get(r.id).onShowDown();
+        _onCallback(r.action, r.id);
+    }
+
+    function _onCallback(RequestAction action, uint256 id) private {
+        if (action == RequestAction.Flop) {
+            Attacks.getOrRevert(id).onFlop();
+        } else if (action == RequestAction.ShowDown) {
+            Attacks.getOrRevert(id).onShowDown();
+        } else if (action == RequestAction.RepairCard) {
+            Cards.getOrRevert(id).onRepair();
+        } else if (action == RequestAction.JokerizeCard) {
+            Cards.getOrRevert(id).onJokerize();
+        } else if (action == RequestAction.MutateRank) {
+            Cards.getOrRevert(id).onMutateRank();
+        } else if (action == RequestAction.MutateSuit) {
+            Cards.getOrRevert(id).onMutateSuit();
         } else {
-            revert InvalidRandomizerId();
+            revert InvalidAction();
         }
     }
 }

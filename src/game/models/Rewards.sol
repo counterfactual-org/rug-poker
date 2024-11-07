@@ -6,8 +6,8 @@ import { GameConfigs } from "./GameConfigs.sol";
 import { TransferLib } from "src/libraries/TransferLib.sol";
 
 library Rewards {
-    event DebugMoveAccReward(address indexed from, address indexed to, uint256 reward, uint256 amount, uint256 fee);
-    event MoveAccReward(address indexed from, address indexed to, uint256 amount);
+    event DebugMoveAccReward(address indexed from, address indexed to, uint256 reward, uint256 amount);
+    event MoveAccReward(address indexed from, address indexed to, uint8 percentage, uint256 amount);
     event ClaimReward(address indexed account, uint256 amount);
     event Checkpoint(uint256 accRewardPerShare, uint256 reserve);
 
@@ -38,14 +38,11 @@ library Rewards {
         uint256 reward = s.accReward[from];
         uint256 amount = reward * percentage / 100;
 
-        uint256 fee = amount / 10;
         s.accReward[from] = reward - amount;
-        s.accReward[to] += (amount - fee);
+        s.accReward[to] += amount;
 
-        TransferLib.transferETH(s.treasury, fee, address(0));
-
-        emit DebugMoveAccReward(from, to, reward, amount, fee);
-        emit MoveAccReward(from, to, amount);
+        emit DebugMoveAccReward(from, to, reward, amount);
+        emit MoveAccReward(from, to, percentage, amount);
     }
 
     function claim(address owner, uint256 shares) internal {

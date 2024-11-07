@@ -27,6 +27,7 @@ import { GameConfig, GameConfigs } from "./GameConfigs.sol";
 import { Players } from "./Players.sol";
 import { Random } from "./Random.sol";
 import { RandomizerRequests } from "./RandomizerRequests.sol";
+import { Rewards } from "./Rewards.sol";
 import { IEvaluator } from "src/interfaces/IEvaluator.sol";
 import { INFT } from "src/interfaces/INFT.sol";
 import { INFTMinter } from "src/interfaces/INFTMinter.sol";
@@ -42,20 +43,27 @@ library Cards {
     uint8 constant FIELD_SUIT = 3;
     uint8 constant MAX_CARD_VALUE = 52;
 
-    event MoveCard(address indexed from, address indexed to, uint256 indexed tokenId);
-    event CardGainXP(uint256 tokenId, uint32 xp);
-    event CardLevelUp(uint256 tokenId, uint8 level);
+    event TransferCardOwnership(uint256 indexed tokenId, address indexed from, address indexed to);
+    event SpendCard(uint256 indexed tokenId, uint8 durability);
+    event CardGainXP(uint256 indexed tokenId, uint32 xp);
+    event CardLevelUp(uint256 indexed tokenId, uint8 level, uint8 powerUpPercentage, uint32 powerUp);
+    event OnRepair(uint256 indexed tokenId, bool success);
+    event OnJokerize(uint256 indexed tokenId, bool success);
+    event OnMutateRank(uint256 indexed tokenId, bool success, uint8 rank);
+    event OnMutateSuit(uint256 indexed tokenId, bool success, uint8 suit);
 
     error InvalidNumberOfCards();
     error DuplicateTokenIds();
     error InvalidCard();
+    error NotCard();
+    error CardAdded(uint256 tokenId);
     error CardNotAdded(uint256 tokenId);
     error Underuse(uint256 tokenId);
     error NotCardOwner(uint256 tokenId);
     error WornOut(uint256 tokenId);
     error DurationNotElapsed(uint256 tokenId);
     error UnableToRepair(uint256 tokenId);
-    error UnableToJokerize(uint256 tokenId);
+    error IsJoker(uint256 tokenId);
 
     function gameStorage() internal pure returns (GameStorage storage s) {
         assembly {
@@ -154,11 +162,16 @@ library Cards {
     }
 
     function maxXP(uint8 level) internal pure returns (uint32 xp) {
-        return 3000 * level * level + 7000;
+        return uint32(3000) * level * level + 7000;
     }
 
     function get(uint256 tokenId) internal view returns (Card storage self) {
         return gameStorage().cards[tokenId];
+    }
+
+    function getOrRevert(uint256 tokenId) internal view returns (Card storage self) {
+        self = get(tokenId);
+        if (!initialized(self)) revert NotCard();
     }
 
     function init(uint256 tokenId, address owner) internal returns (Card storage self) {
@@ -172,7 +185,7 @@ library Cards {
         self.level = 1;
         self.lastAddedAt = uint64(block.timestamp);
 
-        emit CardLevelUp(tokenId, 1);
+        emit CardLevelUp(tokenId, 1, 0, 0);
     }
 
     function initialized(Card storage self) internal view returns (bool) {
@@ -255,6 +268,33 @@ library Cards {
         if (assertDurationElapsed && !durationElapsed(self)) revert DurationNotElapsed(tokenId);
     }
 
+    function assertRepairable(Card storage self) internal view {
+        uint256 tokenId = self.tokenId;
+        if (!added(self)) revert CardNotAdded(tokenId);
+        if (self.underuse) revert Underuse(tokenId);
+        if (self.durability >= GameConfigs.latest().maxDurability) revert UnableToRepair(tokenId);
+    }
+
+    function assertJokerizable(Card storage self) internal view {
+        uint256 tokenId = self.tokenId;
+        if (!added(self)) revert CardNotAdded(tokenId);
+        if (self.underuse) revert Underuse(tokenId);
+        if (isJoker(self)) revert IsJoker(tokenId);
+    }
+
+    function assertRankMutable(Card storage self) internal view {
+        uint256 tokenId = self.tokenId;
+        if (!added(self)) revert CardNotAdded(tokenId);
+        if (self.underuse) revert Underuse(tokenId);
+        if (isJoker(self)) revert IsJoker(tokenId);
+    }
+
+    function assertSuitMutable(Card storage self) internal view {
+        uint256 tokenId = self.tokenId;
+        if (!added(self)) revert CardNotAdded(tokenId);
+        if (self.underuse) revert Underuse(tokenId);
+    }
+
     function markUnderuse(Card storage self) internal {
         self.underuse = true;
     }
@@ -263,10 +303,90 @@ library Cards {
         self.underuse = false;
     }
 
+    function add(Card storage self, address owner) internal {
+        uint256 tokenId = self.tokenId;
+        if (added(self)) revert CardAdded(tokenId);
+
+        Player storage player = Players.getOrRevert(owner);
+        player.checkpoint();
+        player.increaseBogoIfHasNotPlayed();
+
+        self.owner = owner;
+
+        GameConfigs.erc721().transferFrom(owner, address(this), tokenId);
+
+        player.incrementCards();
+        player.incrementShares(self.power);
+        player.updateLastDefendedAt();
+
+        emit TransferCardOwnership(tokenId, address(0), owner);
+    }
+
     function remove(Card storage self) internal {
-        if (!added(self)) revert CardNotAdded(self.tokenId);
+        (address owner, uint256 tokenId) = (self.owner, self.tokenId);
+
+        Player storage player = Players.getOrRevert(owner);
+        if (player.avatarTokenId == tokenId) {
+            player.removeAvatar();
+        }
+
+        uint256 power = self.power;
+        player.checkpoint();
+        Rewards.claim(owner, power);
 
         self.owner = address(0);
+
+        player.decrementCards();
+        // if it's wornOut, decrementShares was already called in spend() so we don't
+        if (!wornOut(self)) {
+            player.decrementShares(power);
+        }
+
+        GameConfigs.erc721().transferFrom(address(this), owner, tokenId);
+
+        emit TransferCardOwnership(tokenId, owner, address(0));
+    }
+
+    function burn(Card storage self) internal {
+        (address owner, uint256 tokenId) = (self.owner, self.tokenId);
+        Player storage player = Players.getOrRevert(owner);
+        if (player.avatarTokenId == tokenId) {
+            player.removeAvatar();
+        }
+
+        player.checkpoint();
+
+        self.owner = address(0);
+
+        player.decrementCards();
+        player.decrementShares(self.power);
+
+        GameConfigs.nft().burn(tokenId);
+
+        emit TransferCardOwnership(tokenId, owner, address(0));
+    }
+
+    function move(Card storage self, address to) internal {
+        address from = self.owner;
+        if (from != to) {
+            uint256 tokenId = self.tokenId;
+            Player storage owner = Players.getOrRevert(from);
+            if (owner.avatarTokenId == tokenId) {
+                owner.removeAvatar();
+            }
+
+            self.owner = to;
+
+            Player storage newOwner = Players.getOrRevert(to);
+            owner.decrementCards();
+            newOwner.incrementCards(true);
+
+            uint256 _shares = self.power;
+            owner.decrementShares(_shares);
+            newOwner.incrementShares(_shares);
+
+            emit TransferCardOwnership(tokenId, from, to);
+        }
     }
 
     function spend(Card storage self) internal {
@@ -276,19 +396,8 @@ library Cards {
         if (durability == 1) {
             Players.get(self.owner).decrementShares(self.power);
         }
-    }
 
-    function move(Card storage self, address to) internal {
-        address from = self.owner;
-        if (from != to) {
-            self.owner = to;
-
-            uint256 _shares = self.power;
-            Players.get(from).decrementShares(_shares);
-            Players.get(to).incrementShares(_shares);
-
-            emit MoveCard(from, to, self.tokenId);
-        }
+        emit SpendCard(self.tokenId, durability - 1);
     }
 
     function gainXP(Card storage self, uint32 delta) internal {
@@ -306,10 +415,13 @@ library Cards {
             if (xp + delta >= max) {
                 delta -= (max - xp);
                 level += 1;
-                power = power * (100 + Random.draw(c.minPowerUpPercentage, c.maxPowerUpPercentage)) / 100;
                 xp = 0;
 
-                emit CardLevelUp(tokenId, level);
+                uint8 powerUpPercentage = Random.draw(c.minPowerUpPercentage, c.maxPowerUpPercentage);
+                uint32 _power = power;
+                power = _power * (100 + powerUpPercentage) / 100;
+
+                emit CardLevelUp(tokenId, level, powerUpPercentage, power - _power);
             } else {
                 xp += delta;
                 break;
@@ -327,16 +439,68 @@ library Cards {
         }
     }
 
-    function repair(Card storage self) internal {
-        if (self.durability >= GameConfigs.latest().maxDurability) revert UnableToRepair(self.tokenId);
+    function onRepair(Card storage self) internal {
+        assertRepairable(self);
 
-        uint8 durability = self.durability + 1;
-        self.durability = durability;
+        // 70% fail - 30% success
+        bool success = Random.draw(0, 100) < 30;
+        if (!success) {
+            burn(self);
+        } else {
+            uint8 durability = self.durability;
+            self.durability = durability + 1;
+
+            if (durability == 0) {
+                Players.get(self.owner).incrementShares(self.power);
+            }
+        }
+
+        emit OnRepair(self.tokenId, success);
     }
 
-    function jokerize(Card storage self) internal {
-        if (isJoker(self)) revert UnableToJokerize(self.tokenId);
+    function onJokerize(Card storage self) internal {
+        assertJokerizable(self);
 
-        self.rank = RANK_JOKER;
+        // 90% fail - 10% success
+        bool success = Random.draw(0, 100) < 10;
+        if (!success) {
+            burn(self);
+        } else {
+            self.rank = RANK_JOKER;
+        }
+
+        emit OnJokerize(self.tokenId, success);
+    }
+
+    function onMutateRank(Card storage self) internal {
+        assertRankMutable(self);
+
+        // 30% fail - 70% success
+        bool success = Random.draw(0, 100) < 70;
+        uint8 rank;
+        if (!success) {
+            burn(self);
+        } else {
+            rank = self.rank;
+            self.rank = (rank + Random.draw(1, 13)) % 13;
+        }
+
+        emit OnMutateRank(self.tokenId, success, rank);
+    }
+
+    function onMutateSuit(Card storage self) internal {
+        assertRankMutable(self);
+
+        // 30% fail - 70% success
+        bool success = Random.draw(0, 100) < 70;
+        uint8 suit;
+        if (!success) {
+            burn(self);
+        } else {
+            suit = self.suit;
+            self.suit = (suit + Random.draw(1, 4)) % 4;
+        }
+
+        emit OnMutateSuit(self.tokenId, success, suit);
     }
 }

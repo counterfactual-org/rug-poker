@@ -33,6 +33,7 @@ library Attacks {
     event DetermineAttackResult(uint256 indexed attackId, AttackResult indexed result);
     event Finalize(uint256 indexed attackId);
 
+    error NotAttack();
     error InvalidAddress();
     error Attacking();
     error Forbidden();
@@ -52,6 +53,15 @@ library Attacks {
 
     function get(uint256 id) internal view returns (Attack_ storage self) {
         return gameStorage().attacks[id];
+    }
+
+    function getOrRevert(uint256 id) internal view returns (Attack_ storage self) {
+        self = get(id);
+        if (!initialized(self)) revert NotAttack();
+    }
+
+    function initialized(Attack_ storage self) internal view returns (bool) {
+        return self.id > 0;
     }
 
     function init(address attacker, address defender) internal returns (Attack_ storage self) {
@@ -194,38 +204,33 @@ library Attacks {
         );
         (address attacker, address defender, uint256[] memory attackingTokenIds, uint256[] memory defendingTokenIds) =
             (self.attacker, self.defender, s.attackingTokenIds[id], s.defendingTokenIds[id]);
-        (uint8 attackerWon, uint8 attackerLost, uint256 rankSumAttack, uint256 rankSumDefense) = (0, 0, 0, 0);
+        (uint8 attackerWon, uint8 attackerLost) = (0, 0);
         for (uint8 i; i < ATTACK_ROUNDS; ++i) {
             if (ranksAttack[i] < ranksDefense[i]) {
                 attackerWon++;
                 _increaseXPs(attacker, defender, ranksAttack[i], ranksDefense[i], attackingTokenIds, defendingTokenIds);
+                Players.get(attacker).incrementPoints(ranksDefense[i] - ranksAttack[i]);
             } else if (ranksAttack[i] > ranksDefense[i]) {
                 attackerLost++;
                 _increaseXPs(defender, attacker, ranksDefense[i], ranksAttack[i], defendingTokenIds, attackingTokenIds);
+                Players.get(defender).incrementPoints(ranksAttack[i] - ranksDefense[i]);
             }
-            rankSumAttack += ranksAttack[i];
-            rankSumDefense += ranksDefense[i];
             emit EvaluateHands(self.id, i, handsAttack[i], ranksAttack[i], handsDefense[i], ranksDefense[i]);
         }
 
+        emit DebugBooty(
+            self.id,
+            _bootyPoints(attackingTokenIds),
+            _bootyPoints(defendingTokenIds),
+            _bootyPercentage(_bootyPoints(attackingTokenIds), _bootyPoints(defendingTokenIds))
+        );
         result = AttackResult.Draw;
         if (attackerWon > attackerLost) {
             _processSuccess(attacker, defender, attackingTokenIds, defendingTokenIds);
-            emit DebugBooty(
-                self.id,
-                _bootyPoints(attackingTokenIds),
-                _bootyPoints(defendingTokenIds),
-                _bootyPercentage(_bootyPoints(attackingTokenIds), _bootyPoints(defendingTokenIds))
-            );
             result = AttackResult.Success;
         } else if (attackerWon < attackerLost) {
             _processFail(defender, attackingTokenIds, defendingTokenIds);
             result = AttackResult.Fail;
-        }
-        if (rankSumDefense > rankSumAttack) {
-            Players.get(attacker).incrementPoints(rankSumDefense - rankSumAttack);
-        } else if (rankSumAttack > rankSumDefense) {
-            Players.get(defender).incrementPoints(rankSumAttack - rankSumDefense);
         }
         self.result = result;
         emit DetermineAttackResult(self.id, result);
@@ -254,16 +259,15 @@ library Attacks {
     function _processFail(address defender, uint256[] memory attackingTokenIds, uint256[] memory defendingTokenIds)
         private
     {
-        uint256 cards = attackingTokenIds.length;
         uint256 attackBootyPoints = _bootyPoints(attackingTokenIds);
         uint256 defenseBootyPoints = _bootyPoints(defendingTokenIds);
-        if (defenseBootyPoints > attackBootyPoints) {
-            uint256 bootyCards = (defenseBootyPoints - attackBootyPoints) * cards / defenseBootyPoints;
-            for (uint256 i; i < bootyCards; ++i) {
-                uint256 index = uint256(Random.draw(0, uint8(cards)));
-                uint256 tokenId = attackingTokenIds[index];
-                Cards.get(tokenId).move(defender);
-            }
+        uint256 bootyCards = defenseBootyPoints > attackBootyPoints ? 1 : 0;
+        if (Random.draw(0, 2) == 0) {
+            bootyCards++;
+        }
+        for (uint256 i; i < attackingTokenIds.length && i < bootyCards; ++i) {
+            uint256 tokenId = attackingTokenIds[i];
+            Cards.get(tokenId).move(defender);
         }
     }
 

@@ -12,3 +12,5 @@ uint256 constant ATTACK_ROUNDS = 3;
 
 uint256 constant ITEM_ID_REPAIR = 0;
 uint256 constant ITEM_ID_JOKERIZE = 1;
+uint256 constant ITEM_ID_CHANGE_RANK = 2;
+uint256 constant ITEM_ID_CHANGE_SUIT = 3;
