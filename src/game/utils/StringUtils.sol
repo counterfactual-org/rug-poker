@@ -14,7 +14,7 @@ function isValidUsername(bytes32 username) pure returns (bool) {
         if (!isAlphabet(username[i]) && !isNumberOrDot(username[i])) return false;
         length++;
     }
-    return length > 3;
+    return username[length - 1] != bytes1(".") && length > 3;
 }
 
 function isAlphabet(bytes1 b) pure returns (bool) {
