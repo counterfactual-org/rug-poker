@@ -293,6 +293,7 @@ library Cards {
         uint256 tokenId = self.tokenId;
         if (!added(self)) revert CardNotAdded(tokenId);
         if (self.underuse) revert Underuse(tokenId);
+        if (isJoker(self)) revert IsJoker(tokenId);
     }
 
     function markUnderuse(Card storage self) internal {

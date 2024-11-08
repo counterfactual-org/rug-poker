@@ -20,7 +20,7 @@ contract CardsFacet is BaseGameFacet {
     event MutateCardSuit(address indexed account, uint256 indexed tokenId);
 
     function selectors() external pure override returns (bytes4[] memory s) {
-        s = new bytes4[](11);
+        s = new bytes4[](13);
         s[0] = this.getCard.selector;
         s[1] = this.cardDurability.selector;
         s[2] = this.cardPower.selector;
@@ -32,6 +32,8 @@ contract CardsFacet is BaseGameFacet {
         s[8] = this.burnCard.selector;
         s[9] = this.repairCard.selector;
         s[10] = this.jokerizeCard.selector;
+        s[11] = this.mutateCardRank.selector;
+        s[12] = this.mutateCardSuit.selector;
     }
 
     function getCard(uint256 tokenId) external view returns (Card memory) {
