@@ -84,7 +84,7 @@ library DiamondDeployer {
             maxPowerUpPercentage: 100,
             maxPlayerLevel: 50,
             maxCardLevel: 10,
-            bogoPercentage: 10,
+            bogoPercentage: 30,
             attackPeriod: staging ? 5 minutes : 1 hours,
             defensePeriod: staging ? 1 hours : 24 hours
         });
