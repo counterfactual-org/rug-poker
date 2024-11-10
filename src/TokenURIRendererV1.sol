@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import { LibString } from "solmate/utils/LibString.sol";
+import { Base64 } from "src/libraries/Base64.sol";
 
 import {
     RANK_ACE,
@@ -26,7 +27,6 @@ import {
 import { IGame } from "src/interfaces/IGame.sol";
 import { ISvgRenderer } from "src/interfaces/ISvgRenderer.sol";
 import { ITokenURIRenderer } from "src/interfaces/ITokenURIRenderer.sol";
-import { Base64 } from "src/libraries/Base64.sol";
 import { TokenAttr, TokenAttrType, TokenURILib } from "src/libraries/TokenURILib.sol";
 
 contract TokenURIRendererV1 is ITokenURIRenderer {
@@ -40,19 +40,31 @@ contract TokenURIRendererV1 is ITokenURIRenderer {
         svgRenderer = _svgRenderer;
     }
 
-    function render(uint256 tokenId) external view returns (bytes memory) {
-        TokenAttr[] memory attrs = new TokenAttr[](3);
-        attrs[0] = TokenAttr(TokenAttrType.String, "suit", _suit(IGame(game).cardSuit(tokenId)));
-        attrs[1] = TokenAttr(TokenAttrType.String, "rank", _rank(IGame(game).cardRank(tokenId)));
-        attrs[2] = TokenAttr(TokenAttrType.String, "level", uint256(IGame(game).cardLevel(tokenId)).toString());
-        attrs[3] = TokenAttr(TokenAttrType.String, "power", uint256(IGame(game).cardPower(tokenId)).toString());
-        attrs[4] =
-            TokenAttr(TokenAttrType.String, "durability", uint256(IGame(game).cardDurability(tokenId)).toString());
-        string memory name = string.concat("Poker Card #", tokenId.toString());
-        string memory description = string.concat("Rug.poker: Mint, Rug and Win!");
-        bytes memory svg = ISvgRenderer(svgRenderer).render(tokenId);
-        string memory image = string(abi.encodePacked("data:image/svg+xml;base64,", Base64.encode(svg)));
+    function render(uint256 tokenId) external view returns (string memory) {
+        uint8 suit = IGame(game).cardSuit(tokenId);
+        uint8 rank = IGame(game).cardRank(tokenId);
+        uint8 level = IGame(game).cardLevel(tokenId);
+        uint32 power = IGame(game).cardPower(tokenId);
+        uint8 durability = IGame(game).cardDurability(tokenId);
+
+        TokenAttr[] memory attrs = new TokenAttr[](5);
+        attrs[0] = TokenAttr(TokenAttrType.String, "suit", _suit(suit));
+        attrs[1] = TokenAttr(TokenAttrType.String, "rank", _rank(rank));
+        attrs[2] = TokenAttr(TokenAttrType.Number, "level", uint256(level).toString());
+        attrs[3] = TokenAttr(TokenAttrType.Number, "power", uint256(power).toString());
+        attrs[4] = TokenAttr(TokenAttrType.Number, "durability", uint256(durability).toString());
+
+        string memory name = string.concat("#", tokenId.toString(), ": ", _name(suit, rank));
+        string memory description = string.concat("Rug.poker: Mint, Rug and Win. Visit https://rug.poker to play!");
+        string memory svg = ISvgRenderer(svgRenderer).render(tokenId);
+        string memory image = string.concat("data:image/svg+xml;base64,", Base64.encode(bytes(svg)));
+
         return TokenURILib.uri(name, description, image, attrs);
+    }
+
+    function _name(uint8 suit, uint8 rank) internal pure returns (string memory) {
+        if (rank == RANK_JOKER) return "Joker";
+        return string.concat(_rank(rank), " of ", _suit(suit), "s");
     }
 
     function _suit(uint8 value) internal pure returns (string memory) {
@@ -68,14 +80,14 @@ contract TokenURIRendererV1 is ITokenURIRenderer {
         if (value == RANK_KING) return "King";
         if (value == RANK_QUEEN) return "Queen";
         if (value == RANK_JACK) return "Jack";
-        if (value == RANK_TEN) return "10";
-        if (value == RANK_NINE) return "9";
-        if (value == RANK_EIGHT) return "8";
-        if (value == RANK_SEVEN) return "7";
-        if (value == RANK_SIX) return "6";
-        if (value == RANK_FIVE) return "5";
-        if (value == RANK_FOUR) return "4";
-        if (value == RANK_THREE) return "3";
-        return "2";
+        if (value == RANK_TEN) return "Ten";
+        if (value == RANK_NINE) return "Nine";
+        if (value == RANK_EIGHT) return "Eight";
+        if (value == RANK_SEVEN) return "Seven";
+        if (value == RANK_SIX) return "Six";
+        if (value == RANK_FIVE) return "Five";
+        if (value == RANK_FOUR) return "Four";
+        if (value == RANK_THREE) return "Three";
+        return "Two";
     }
 }

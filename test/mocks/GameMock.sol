@@ -19,7 +19,7 @@ contract GameMock is IGame {
         return 0;
     }
 
-    function cardPower(uint256) external pure returns (uint8) {
+    function cardPower(uint256) external pure returns (uint32) {
         return 0;
     }
 

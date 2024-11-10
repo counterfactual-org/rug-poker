@@ -21,7 +21,7 @@ library TokenURILib {
     function uri(string memory name, string memory description, string memory image, TokenAttr[] memory attrs)
         internal
         pure
-        returns (bytes memory)
+        returns (string memory)
     {
         string memory dataURI =
             string.concat('{"name":"', name, '","description":"', description, '","image":"', image, '","attributes":[');
@@ -34,6 +34,6 @@ library TokenURILib {
             dataURI = string.concat(dataURI, string.concat('{"trait_type":"', attr.traitType, '","value":', value, "}"));
         }
         dataURI = string.concat(dataURI, "]}");
-        return abi.encodePacked("data:application/json;base64,", Base64.encode(bytes(dataURI)));
+        return string.concat("data:application/json;base64,", Base64.encode(bytes(dataURI)));
     }
 }

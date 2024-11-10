@@ -10,13 +10,13 @@ import { Base64 } from "src/libraries/Base64.sol";
 contract TokenURIRendererMock is ITokenURIRenderer {
     SvgRendererMock svgRenderer = new SvgRendererMock();
 
-    function render(uint256 tokenId) external view returns (bytes memory) {
-        bytes memory svg = ISvgRenderer(svgRenderer).render(tokenId);
-        bytes memory dataURI = abi.encodePacked(
+    function render(uint256 tokenId) external view returns (string memory) {
+        string memory svg = ISvgRenderer(svgRenderer).render(tokenId);
+        string memory dataURI = string.concat(
             '{"name":"Poker NFT","description":"","image":"',
-            string(abi.encodePacked("data:image/svg+xml;base64,", Base64.encode(svg))),
+            string(abi.encodePacked("data:image/svg+xml;base64,", svg)),
             '"}'
         );
-        return abi.encodePacked("data:application/json;base64,", Base64.encode(dataURI));
+        return string.concat("data:application/json;base64,", Base64.encode(bytes(dataURI)));
     }
 }

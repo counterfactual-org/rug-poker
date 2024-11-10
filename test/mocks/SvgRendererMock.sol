@@ -7,7 +7,7 @@ import { ISvgRenderer } from "src/interfaces/ISvgRenderer.sol";
 contract SvgRendererMock is ISvgRenderer {
     using LibString for uint256;
 
-    function render(uint256) external pure returns (bytes memory) {
-        return bytes(string.concat("<svg></svg>"));
+    function render(uint256) external pure returns (string memory) {
+        return string.concat("<svg></svg>");
     }
 }
