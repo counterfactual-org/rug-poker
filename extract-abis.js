@@ -32,5 +32,5 @@ if (!fs.existsSync("abis")) {
 }
 writeAbi("AuctionHouse", getAbi("AuctionHouse"))
 writeAbi("NFT", getAbi("NFT"))
-extractAbis("NFTMinter", ["ClaimsFacet", "JackpotFacet", "MinterConfigsFacet", "MintFacet"]);
-extractAbis("Game", ["AttacksFacet", "CardsFacet", "GameConfigsFacet", "ItemsFacet", "PlayersFacet", "RandomizerFacet"]);
+extractAbis("NFTMinter", ["JackpotFacet", "MinterConfigsFacet", "MintFacet"]);
+extractAbis("Game", ["AttacksFacet", "CardsFacet", "GameConfigsFacet", "ItemsFacet", "PlayersFacet"]);

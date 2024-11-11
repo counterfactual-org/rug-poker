@@ -22,11 +22,10 @@ import {
     RANK_THREE,
     RANK_TWO
 } from "../GameConstants.sol";
-import { Card, GameStorage, Player, RandomizerRequest, RequestAction } from "../GameStorage.sol";
+import { Card, GameStorage, Player, RequestAction } from "../GameStorage.sol";
 import { GameConfig, GameConfigs } from "./GameConfigs.sol";
 import { Players } from "./Players.sol";
 import { Random } from "./Random.sol";
-import { RandomizerRequests } from "./RandomizerRequests.sol";
 import { Rewards } from "./Rewards.sol";
 import { IEvaluator } from "src/interfaces/IEvaluator.sol";
 import { INFT } from "src/interfaces/INFT.sol";
@@ -35,7 +34,6 @@ import { ArrayLib } from "src/libraries/ArrayLib.sol";
 
 library Cards {
     using Players for Player;
-    using RandomizerRequests for RandomizerRequest;
 
     uint8 constant FIELD_DURABILITY = 0;
     uint8 constant FIELD_POWER = 1;

@@ -6,7 +6,7 @@ import { Card, Cards } from "../models/Cards.sol";
 import { GameConfigs } from "../models/GameConfigs.sol";
 import { Items } from "../models/Items.sol";
 import { Player, Players } from "../models/Players.sol";
-import { RandomizerRequests, RequestAction } from "../models/RandomizerRequests.sol";
+import { RequestAction, VrfRequests } from "../models/VrfRequests.sol";
 import { BaseGameFacet } from "./BaseGameFacet.sol";
 import { ERC1155Lib } from "src/libraries/ERC1155Lib.sol";
 
@@ -107,7 +107,7 @@ contract CardsFacet is BaseGameFacet {
 
         Items.spend(ITEM_ID_REPAIR, msg.sender);
 
-        RandomizerRequests.request(RequestAction.RepairCard, tokenId);
+        VrfRequests.request(RequestAction.RepairCard, tokenId);
 
         emit RepairCard(msg.sender, tokenId, card.durability);
     }
@@ -120,7 +120,7 @@ contract CardsFacet is BaseGameFacet {
 
         Items.spend(ITEM_ID_JOKERIZE, msg.sender);
 
-        RandomizerRequests.request(RequestAction.JokerizeCard, tokenId);
+        VrfRequests.request(RequestAction.JokerizeCard, tokenId);
 
         emit JokerizeCard(msg.sender, tokenId);
     }
@@ -133,7 +133,7 @@ contract CardsFacet is BaseGameFacet {
 
         Items.spend(ITEM_ID_CHANGE_RANK, msg.sender);
 
-        RandomizerRequests.request(RequestAction.MutateRank, tokenId);
+        VrfRequests.request(RequestAction.MutateRank, tokenId);
 
         emit MutateCardRank(msg.sender, tokenId);
     }
@@ -146,7 +146,7 @@ contract CardsFacet is BaseGameFacet {
 
         Items.spend(ITEM_ID_CHANGE_RANK, msg.sender);
 
-        RandomizerRequests.request(RequestAction.MutateSuit, tokenId);
+        VrfRequests.request(RequestAction.MutateSuit, tokenId);
 
         emit MutateCardSuit(msg.sender, tokenId);
     }

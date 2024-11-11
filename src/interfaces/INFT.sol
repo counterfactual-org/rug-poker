@@ -8,9 +8,7 @@ interface INFT {
 
     function dataOf(uint256 id) external view returns (bytes32);
 
-    function estimateRandomizerFee() external view returns (uint256);
-
-    function draw(uint256 amount, address to) external payable;
+    function mintWithData(address to, bytes32 value) external;
 
     function burn(uint256 id) external;
 }

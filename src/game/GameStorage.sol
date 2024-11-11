@@ -5,11 +5,8 @@ import { ATTACK_ROUNDS } from "./GameConstants.sol";
 
 struct GameStorage {
     // configs
-    bool staging;
     address nft;
-    address randomizer;
     address evaluator9;
-    uint256 randomizerGasLimit;
     address treasury;
     uint256 configVersion;
     mapping(uint256 version => GameConfig) configs;
@@ -39,8 +36,6 @@ struct GameStorage {
     mapping(uint256 attackId => uint8[]) attackingJokerCards;
     mapping(uint256 attackId => uint8[]) defendingJokerCards;
     mapping(uint256 attackId => uint8[][ATTACK_ROUNDS]) communityCards;
-    // randomizer requests
-    mapping(uint256 randomizerId => RandomizerRequest) pendingRandomizerRequests;
     // random
     uint256 randomValueId;
     mapping(uint256 id => RandomValue) randomValues;
@@ -123,11 +118,6 @@ enum AttackResult {
     Success,
     Fail,
     Draw
-}
-
-struct RandomizerRequest {
-    RequestAction action;
-    uint256 id;
 }
 
 enum RequestAction {

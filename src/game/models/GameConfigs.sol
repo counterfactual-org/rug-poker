@@ -9,13 +9,9 @@ import { IEvaluator } from "src/interfaces/IEvaluator.sol";
 import { INFT } from "src/interfaces/INFT.sol";
 
 library GameConfigs {
-    uint256 constant MIN_RANDOMIZER_GAS_LIMIT = 100_000;
-
-    error GasLimitTooLow();
     error InvalidAddress();
     error InvalidNumber();
     error InvalidPercentage();
-    error InvalidAttackFees();
 
     function gameStorage() internal pure returns (GameStorage storage s) {
         assembly {
@@ -43,12 +39,6 @@ library GameConfigs {
 
     function evaluator9() internal view returns (IEvaluator) {
         return IEvaluator(gameStorage().evaluator9);
-    }
-
-    function updateRandomizerGasLimit(uint256 _randomizerGasLimit) internal {
-        if (_randomizerGasLimit < MIN_RANDOMIZER_GAS_LIMIT) revert GasLimitTooLow();
-
-        gameStorage().randomizerGasLimit = _randomizerGasLimit;
     }
 
     function updateEvaluator9(address _evaluator) internal {

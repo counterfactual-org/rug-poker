@@ -21,6 +21,11 @@ contract MintFacet is BaseMinterFacet {
         s[1] = this.increaseBogoOf.selector;
         s[2] = this.mint.selector;
         s[3] = this.mintBogo.selector;
+        s[4] = this.isAirdrop.selector;
+    }
+
+    function isAirdrop(uint256) external pure returns (bool) {
+        return false;
     }
 
     function bogoOf(address account) external view returns (uint256) {
@@ -56,7 +61,7 @@ contract MintFacet is BaseMinterFacet {
         if (block.timestamp < c.initialDiscountUntil) {
             totalPrice = totalPrice * 7 / 10;
         }
-        if (msg.value < totalPrice) revert InsufficientValue();
+        if (msg.value != totalPrice) revert InsufficientValue();
 
         TransferLib.transferETH(s.treasury, totalPrice * c.shares[SHARES_TREASURY] / 100, address(0));
         TransferLib.transferETH(s.game, totalPrice * c.shares[SHARES_GAME] / 100, address(0));
@@ -66,8 +71,12 @@ contract MintFacet is BaseMinterFacet {
         }
 
         uint256 bonus = (amount >= 10 ? 5 : amount >= 5 ? 2 : amount >= 3 ? 1 : 0);
+        uint256 totalAmount = amount + bonus + (useBogo ? 1 : 0);
         INFT nft = MinterConfigs.nft();
-        nft.draw{ value: nft.estimateRandomizerFee() }(amount + bonus + (useBogo ? 1 : 0), msg.sender);
+        for (uint256 i; i < totalAmount; ++i) {
+            // TODO: turn on vrf later
+            nft.mintWithData(msg.sender, bytes32(gasleft()));
+        }
 
         emit Mint(totalPrice, amount, bonus, useBogo, msg.sender);
     }

@@ -11,15 +11,7 @@ import { GameConfig, GameStorage } from "./GameStorage.sol";
 import { GameConfigs } from "./models/GameConfigs.sol";
 
 contract GameInit {
-    function init(
-        bool staging,
-        address nft,
-        address randomizer,
-        address evaluator9,
-        address treasury,
-        uint256 randomizerGasLimit,
-        GameConfig memory c
-    ) external {
+    function init(address nft, address evaluator9, address treasury, GameConfig memory c) external {
         LibDiamond.DiamondStorage storage ds = LibDiamond.diamondStorage();
         ds.supportedInterfaces[type(IERC165).interfaceId] = true;
         ds.supportedInterfaces[type(IDiamondCut).interfaceId] = true;
@@ -29,12 +21,9 @@ contract GameInit {
         ds.supportedInterfaces[0x0e89341c] = true; // ERC165 Interface ID for ERC1155MetadataURI
 
         GameStorage storage s = GameConfigs.gameStorage();
-        s.staging = staging;
         s.nft = nft;
-        s.randomizer = randomizer;
         GameConfigs.updateEvaluator9(evaluator9);
         GameConfigs.updateTreasury(treasury);
-        GameConfigs.updateRandomizerGasLimit(randomizerGasLimit);
         GameConfigs.updateConfig(c);
     }
 }

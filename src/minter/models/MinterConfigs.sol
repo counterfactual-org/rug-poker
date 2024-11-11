@@ -9,8 +9,6 @@ import { IEvaluator } from "src/interfaces/IEvaluator.sol";
 import { INFT } from "src/interfaces/INFT.sol";
 
 library MinterConfigs {
-    uint256 constant MIN_RANDOMIZER_GAS_LIMIT = 100_000;
-
     error InvalidAddress();
     error InvalidPrice();
     error InvalidShares();

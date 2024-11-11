@@ -7,7 +7,6 @@ import { Player, Players } from "../models/Players.sol";
 import { Rewards } from "../models/Rewards.sol";
 import { BaseGameFacet } from "./BaseGameFacet.sol";
 import { LibString } from "solmate/utils/LibString.sol";
-import { IRandomizerCallback } from "src/interfaces/IRandomizerCallback.sol";
 import { ERC1155Lib, ERC1155Storage } from "src/libraries/ERC1155Lib.sol";
 import { TokenAttr, TokenAttrType, TokenURILib } from "src/libraries/TokenURILib.sol";
 import { TransferLib } from "src/libraries/TransferLib.sol";

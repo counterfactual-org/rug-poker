@@ -5,39 +5,27 @@ import { GameConfig, GameConfigs } from "../models/GameConfigs.sol";
 import { BaseGameFacet } from "./BaseGameFacet.sol";
 
 contract GameConfigsFacet is BaseGameFacet {
-    event UpdateRandomizerGasLimit(uint256 gasLimit);
     event UpdateEvaluator9(address indexed evaluator);
     event UpdateTreasury(address indexed treasury);
     event UpdateConfig();
 
     function selectors() external pure override returns (bytes4[] memory s) {
-        s = new bytes4[](10);
+        s = new bytes4[](7);
         s[0] = this.nft.selector;
-        s[1] = this.randomizer.selector;
-        s[2] = this.evaluator9.selector;
-        s[3] = this.randomizerGasLimit.selector;
-        s[4] = this.treasury.selector;
-        s[5] = this.config.selector;
-        s[6] = this.updateRandomizerGasLimit.selector;
-        s[7] = this.updateEvaluator9.selector;
-        s[8] = this.updateTreasury.selector;
-        s[9] = this.updateConfig.selector;
+        s[1] = this.evaluator9.selector;
+        s[2] = this.treasury.selector;
+        s[3] = this.config.selector;
+        s[4] = this.updateEvaluator9.selector;
+        s[5] = this.updateTreasury.selector;
+        s[6] = this.updateConfig.selector;
     }
 
     function nft() external view returns (address) {
         return s.nft;
     }
 
-    function randomizer() external view returns (address) {
-        return s.randomizer;
-    }
-
     function evaluator9() external view returns (address) {
         return s.evaluator9;
-    }
-
-    function randomizerGasLimit() external view returns (uint256) {
-        return s.randomizerGasLimit;
     }
 
     function treasury() external view returns (address) {
@@ -46,12 +34,6 @@ contract GameConfigsFacet is BaseGameFacet {
 
     function config() external view returns (GameConfig memory) {
         return GameConfigs.latest();
-    }
-
-    function updateRandomizerGasLimit(uint256 _randomizerGasLimit) external onlyOwner {
-        GameConfigs.updateRandomizerGasLimit(_randomizerGasLimit);
-
-        emit UpdateRandomizerGasLimit(_randomizerGasLimit);
     }
 
     function updateEvaluator9(address _evaluator) external onlyOwner {

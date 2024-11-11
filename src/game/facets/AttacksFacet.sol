@@ -8,8 +8,9 @@ import { Card, Cards } from "../models/Cards.sol";
 import { GameConfig, GameConfigs } from "../models/GameConfigs.sol";
 import { Player, Players } from "../models/Players.sol";
 import { Random } from "../models/Random.sol";
-import { RandomizerRequests, RequestAction } from "../models/RandomizerRequests.sol";
+
 import { Rewards } from "../models/Rewards.sol";
+import { RequestAction, VrfRequests } from "../models/VrfRequests.sol";
 import { BaseGameFacet } from "./BaseGameFacet.sol";
 
 contract AttacksFacet is BaseGameFacet {
@@ -19,10 +20,9 @@ contract AttacksFacet is BaseGameFacet {
 
     event Flop(uint256 indexed attackId, address indexed attacker, address indexed defender);
     event Submit(uint256 indexed attackId, address indexed from, uint256[] tokenIds, uint8[] jokerCards);
-    event ShowDown(uint256 indexed attackId, uint256 randomizerId);
 
     function selectors() external pure override returns (bytes4[] memory s) {
-        s = new bytes4[](13);
+        s = new bytes4[](12);
         s[0] = this.getAttack.selector;
         s[1] = this.attackingTokenIds.selector;
         s[2] = this.defendingTokenIds.selector;
@@ -82,7 +82,7 @@ contract AttacksFacet is BaseGameFacet {
 
         Attack_ storage a = Attacks.init(msg.sender, defender);
         uint256 id = a.id;
-        RandomizerRequests.request(RequestAction.Flop, id);
+        VrfRequests.request(RequestAction.Flop, id);
 
         emit Flop(id, msg.sender, defender);
     }
@@ -96,7 +96,7 @@ contract AttacksFacet is BaseGameFacet {
         emit Submit(attackId, msg.sender, tokenIds, jokerCards);
 
         if (a.submit(tokenIds, jokerCards)) {
-            RandomizerRequests.request(RequestAction.ShowDown, attackId);
+            VrfRequests.request(RequestAction.ShowDown, attackId);
         }
     }
 

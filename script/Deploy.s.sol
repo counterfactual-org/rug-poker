@@ -16,11 +16,7 @@ import { IFacet } from "src/interfaces/IFacet.sol";
 contract DeployScript is BaseScript {
     using LibString for uint256;
 
-    uint256 private constant MIN_RANDOMIZER_GAS_LIMIT = 100_000;
-
     function _run(uint256, address owner) internal override {
-        bool staging = _isStaging();
-        address randomizer = vm.envAddress("RANDOMIZER");
         address evaluator9 = vm.envAddress("EVALUATOR9");
         address treasury = vm.envAddress("TREASURY");
 
@@ -35,18 +31,14 @@ contract DeployScript is BaseScript {
 
         address nft = _loadDeployment("NFT");
         if (nft == address(0)) {
-            nft = address(
-                new NFT{ salt: 0 }(staging, randomizer, MIN_RANDOMIZER_GAS_LIMIT, address(0), "Rug.Poker", "RUG", owner)
-            );
+            nft = address(new NFT{ salt: 0 }(address(0), "Rug.Poker", "RUG", owner));
             _saveDeployment("NFT", address(nft));
         }
 
         address[] memory facets;
         address game = _loadDeployment("Game");
         if (game == address(0)) {
-            (facets, game) = DiamondDeployer.deployGame(
-                staging, cut, loupe, nft, randomizer, evaluator9, treasury, MIN_RANDOMIZER_GAS_LIMIT, owner
-            );
+            (facets, game) = DiamondDeployer.deployGame(cut, loupe, nft, evaluator9, treasury, owner);
             _saveDeployment("Game", address(game));
             _saveFacets("Game", facets);
             NFT(nft).updateApp(game, true);
@@ -73,11 +65,11 @@ contract DeployScript is BaseScript {
             NFT(nft).updateTokenURIRenderer(tokenURIRenderer);
         }
 
-        address auctionHouse = _loadDeployment("AuctionHouse");
-        if (auctionHouse == address(0)) {
-            auctionHouse = address(new AuctionHouse{ salt: 0 }(nft, treasury, owner));
-            _saveDeployment("AuctionHouse", address(auctionHouse));
-            NFT(nft).updateApp(auctionHouse, true);
-        }
+        // address auctionHouse = _loadDeployment("AuctionHouse");
+        // if (auctionHouse == address(0)) {
+        //     auctionHouse = address(new AuctionHouse{ salt: 0 }(nft, treasury, owner));
+        //     _saveDeployment("AuctionHouse", address(auctionHouse));
+        //     NFT(nft).updateApp(auctionHouse, true);
+        // }
     }
 }

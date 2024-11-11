@@ -10,7 +10,6 @@ import { CardsFacet } from "src/game/facets/CardsFacet.sol";
 import { GameConfigsFacet } from "src/game/facets/GameConfigsFacet.sol";
 import { ItemsFacet } from "src/game/facets/ItemsFacet.sol";
 import { PlayersFacet } from "src/game/facets/PlayersFacet.sol";
-import { RandomizerFacet } from "src/game/facets/RandomizerFacet.sol";
 import { IFacet } from "src/interfaces/IFacet.sol";
 
 contract UpgradeScript is BaseScript {

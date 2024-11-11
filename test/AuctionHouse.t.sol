@@ -49,7 +49,6 @@ contract AuctionHouseTest is Test {
     error InvalidAddress();
     error InvalidDrawPrice();
     error DrawPriceCannotCoverFee();
-    error InvalidRandomNumberId();
     error InvalidDurationMin();
     error InvalidDeadline();
     error InvalidPriceMin();
