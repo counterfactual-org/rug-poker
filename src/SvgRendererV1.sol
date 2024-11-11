@@ -17,6 +17,17 @@ contract SvgRendererV1 is Owned, ISvgRenderer {
         game = _game;
     }
 
+    function updateImages(string[56] memory _images) external onlyOwner {
+        for (uint8 suit; suit < 4; ++suit) {
+            for (uint8 rank; rank < 14; ++rank) {
+                string memory image = _images[rank * 4 + suit];
+                images[suit][rank] = image;
+
+                emit UpdateImage(suit, rank, image);
+            }
+        }
+    }
+
     function updateImage(uint8 suit, uint8 rank, string memory image) external onlyOwner {
         images[suit][rank] = image;
 
