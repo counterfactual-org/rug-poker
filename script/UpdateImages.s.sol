@@ -5,9 +5,9 @@ import { BaseScript, console } from "./BaseScript.s.sol";
 import { Base64 } from "src/libraries/Base64.sol";
 
 interface ISvgRenderer_ {
-    function updateImages(string[56] memory _images) external;
+    function updateImages(bytes[56] memory _images) external;
 
-    function updateImage(uint8 suit, uint8 rank, string memory image) external;
+    function updateImage(uint8 suit, uint8 rank, bytes memory image) external;
 }
 
 contract UpdateImagesScript is BaseScript {
@@ -44,15 +44,14 @@ contract UpdateImagesScript is BaseScript {
     function _run(uint256, address) internal override {
         address renderer = _loadDeployment("SvgRendererV1");
 
-        string[56] memory images;
         for (uint8 suit; suit < 4; ++suit) {
             for (uint8 rank; rank < 14; ++rank) {
                 string memory r = rankChars[rank];
                 string memory s = rank == 13 ? suitCharsJoker[suit] : suitChars[suit];
                 string memory path = string.concat("res/svg/", r, s, ".svg");
-                images[rank * 4 + suit] = vm.readFile(path);
+                bytes memory image = vm.readFileBinary(path);
+                ISvgRenderer_(renderer).updateImage(suit, rank, image);
             }
         }
-        ISvgRenderer_(renderer).updateImages(images);
     }
 }

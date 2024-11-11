@@ -9,18 +9,18 @@ import { ISvgRenderer } from "src/interfaces/ISvgRenderer.sol";
 contract SvgRendererV1 is Owned, ISvgRenderer {
     address public immutable game;
 
-    mapping(uint8 suit => mapping(uint8 rank => string)) public images;
+    mapping(uint8 suit => mapping(uint8 rank => bytes)) public images;
 
-    event UpdateImage(uint8 indexed suit, uint8 indexed rank, string indexed image);
+    event UpdateImage(uint8 indexed suit, uint8 indexed rank, bytes indexed image);
 
     constructor(address _game, address _owner) Owned(_owner) {
         game = _game;
     }
 
-    function updateImages(string[56] memory _images) external onlyOwner {
+    function updateImages(bytes[56] memory _images) external onlyOwner {
         for (uint8 suit; suit < 4; ++suit) {
             for (uint8 rank; rank < 14; ++rank) {
-                string memory image = _images[rank * 4 + suit];
+                bytes memory image = _images[rank * 4 + suit];
                 images[suit][rank] = image;
 
                 emit UpdateImage(suit, rank, image);
@@ -28,7 +28,7 @@ contract SvgRendererV1 is Owned, ISvgRenderer {
         }
     }
 
-    function updateImage(uint8 suit, uint8 rank, string memory image) external onlyOwner {
+    function updateImage(uint8 suit, uint8 rank, bytes memory image) external onlyOwner {
         images[suit][rank] = image;
 
         emit UpdateImage(suit, rank, image);
@@ -37,6 +37,6 @@ contract SvgRendererV1 is Owned, ISvgRenderer {
     function render(uint256 tokenId) external view override returns (string memory svg) {
         uint8 suit = IGame(game).cardSuit(tokenId);
         uint8 rank = IGame(game).cardRank(tokenId);
-        return images[suit][rank];
+        return string(images[suit][rank]);
     }
 }
