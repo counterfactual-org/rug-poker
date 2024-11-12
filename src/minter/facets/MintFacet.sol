@@ -16,12 +16,13 @@ contract MintFacet is BaseMinterFacet {
     error InsufficientValue();
 
     function selectors() external pure override returns (bytes4[] memory s) {
-        s = new bytes4[](5);
+        s = new bytes4[](6);
         s[0] = this.bogoOf.selector;
         s[1] = this.increaseBogoOf.selector;
         s[2] = this.mint.selector;
         s[3] = this.mintBogo.selector;
         s[4] = this.isAirdrop.selector;
+        s[5] = this.airdrop.selector;
     }
 
     function isAirdrop(uint256) external pure returns (bool) {
@@ -74,10 +75,25 @@ contract MintFacet is BaseMinterFacet {
         uint256 totalAmount = amount + bonus + (useBogo ? 1 : 0);
         INFT nft = MinterConfigs.nft();
         for (uint256 i; i < totalAmount; ++i) {
-            // TODO: turn on vrf later
-            nft.mintWithData(msg.sender, bytes32(gasleft()));
+            _mintOne(nft, msg.sender);
         }
 
         emit Mint(totalPrice, amount, bonus, useBogo, msg.sender);
+    }
+
+    function airdrop(bytes calldata accounts, uint8 size) external onlyOwner {
+        INFT nft = MinterConfigs.nft();
+        uint256 length = accounts.length / 20;
+        for (uint256 i; i < length; ++i) {
+            address account = address(bytes20(accounts[i * 20:i * 20 + 20]));
+            for (uint256 j; j < size; ++j) {
+                _mintOne(nft, account);
+            }
+        }
+    }
+
+    function _mintOne(INFT nft, address to) internal {
+        // TODO: turn on vrf later
+        nft.mintWithData(to, keccak256(abi.encodePacked(block.number, block.timestamp, tx.gasprice, gasleft())));
     }
 }
