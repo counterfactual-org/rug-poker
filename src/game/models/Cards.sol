@@ -29,7 +29,6 @@ import { Random } from "./Random.sol";
 import { Rewards } from "./Rewards.sol";
 import { IEvaluator } from "src/interfaces/IEvaluator.sol";
 import { INFT } from "src/interfaces/INFT.sol";
-import { INFTMinter } from "src/interfaces/INFTMinter.sol";
 import { ArrayLib } from "src/libraries/ArrayLib.sol";
 
 library Cards {
@@ -209,7 +208,6 @@ library Cards {
     function deriveDurability(uint256 tokenId) internal view returns (uint8) {
         GameConfig memory c = GameConfigs.latest();
         INFT nft = GameConfigs.nft();
-        if (INFTMinter(nft.minter()).isAirdrop(tokenId)) return c.minDurability;
 
         bytes32 data = nft.dataOf(tokenId);
         return c.minDurability + (uint8(data[FIELD_DURABILITY]) % (c.maxDurability - c.minDurability));
@@ -218,7 +216,6 @@ library Cards {
     function derivePower(uint256 tokenId) internal view returns (uint32) {
         GameConfig memory c = GameConfigs.latest();
         INFT nft = GameConfigs.nft();
-        if (INFTMinter(nft.minter()).isAirdrop(tokenId)) return c.minPower;
 
         bytes32 data = nft.dataOf(tokenId);
         uint32 range = c.maxPower - c.minPower;
@@ -241,7 +238,6 @@ library Cards {
         if (value < 228) return RANK_JACK;
         if (value < 239) return RANK_QUEEN;
         if (value < 249) return RANK_KING;
-        if (INFTMinter(nft.minter()).isAirdrop(tokenId) || value < 255) return RANK_ACE;
         return RANK_JOKER;
     }
 
