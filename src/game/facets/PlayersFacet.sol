@@ -9,7 +9,7 @@ contract PlayersFacet is BaseGameFacet {
     using Players for Player;
 
     function selectors() external pure override returns (bytes4[] memory s) {
-        s = new bytes4[](8);
+        s = new bytes4[](10);
         s[0] = this.getPlayer.selector;
         s[1] = this.accRewardOf.selector;
         s[2] = this.sharesSum.selector;
@@ -18,6 +18,8 @@ contract PlayersFacet is BaseGameFacet {
         s[5] = this.updatePlayerAvatar.selector;
         s[6] = this.checkpointPlayer.selector;
         s[7] = this.checkpoint.selector;
+        s[8] = this.createdAfterCheckpointFix.selector;
+        s[9] = this.accRewardUpdatedForCheckpointFix.selector;
     }
 
     function getPlayer(address account) external view returns (Player memory) {
@@ -57,5 +59,13 @@ contract PlayersFacet is BaseGameFacet {
 
     function checkpoint() external {
         Rewards.checkpoint();
+    }
+
+    function createdAfterCheckpointFix(address account) external view returns (bool) {
+        return s.createdAfterCheckpointFix[account];
+    }
+
+    function accRewardUpdatedForCheckpointFix(address account) external view returns (bool) {
+        return s.accRewardUpdatedForCheckpointFix[account];
     }
 }
