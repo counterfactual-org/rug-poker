@@ -72,6 +72,8 @@ library Players {
         self.avatarTokenId = type(uint256).max;
         updateUsername(self, username);
 
+        gameStorage().createdAfterCheckpointFix[account] = true;
+
         emit CreatePlayer(account);
         emit PlayerLevelUp(account, 1);
     }
@@ -289,8 +291,13 @@ library Players {
         Rewards.checkpoint();
 
         GameStorage storage s = gameStorage();
-
         address account = self.account;
+        if (!s.createdAfterCheckpointFix[account] && !s.accRewardUpdatedForCheckpointFix[account]) {
+            s.accReward[account] /= 10;
+
+            s.accRewardUpdatedForCheckpointFix[account] = true;
+        }
+
         uint256 shares = s.shares[account];
         uint256 accReward = s.accReward[account];
         if (shares > 0) {

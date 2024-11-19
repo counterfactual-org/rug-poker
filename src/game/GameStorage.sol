@@ -39,6 +39,9 @@ struct GameStorage {
     // random
     uint256 randomValueId;
     mapping(uint256 id => RandomValue) randomValues;
+    // bugfix for checkpoint()
+    mapping(address account => bool) createdAfterCheckpointFix;
+    mapping(address account => bool) accRewardUpdatedForCheckpointFix;
 }
 
 struct GameConfig {
