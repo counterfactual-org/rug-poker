@@ -1,15 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import { BaseScript, console } from "./BaseScript.s.sol";
+import { BaseScript, Vm, VmLib, console } from "./BaseScript.s.sol";
 
 interface IMintFacet_ {
     function airdrop(bytes calldata accounts, uint8 size) external;
 }
 
 contract AirdropScript is BaseScript {
+    using VmLib for Vm;
+
     function _run(uint256, address) internal override {
-        address minter = _loadDeployment("NFTMinter");
+        address minter = vm.loadDeployment("NFTMinter");
 
         address[] memory accounts = vm.envAddress("AIRDROP_ACCOUNTS", ":");
         bytes memory _accounts;

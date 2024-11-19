@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import { BaseScript } from "./BaseScript.s.sol";
+import { BaseScript, Vm, VmLib } from "./BaseScript.s.sol";
 
 uint256 constant ITEM_ID_REPAIR = 0;
 uint256 constant ITEM_ID_JOKERIZE = 1;
@@ -20,9 +20,11 @@ interface IItemFacet_ {
 }
 
 contract AddItemEntriesScript is BaseScript {
+    using VmLib for Vm;
+
     function _run(uint256, address) internal override {
-        bool staging = _isStaging();
-        address game = _loadDeployment("Game");
+        bool staging = vm.isStaging();
+        address game = vm.loadDeployment("Game");
 
         IItemFacet_(game).updateItemEntry(
             ITEM_ID_REPAIR,

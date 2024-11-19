@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import { BaseScript } from "./BaseScript.s.sol";
+import { BaseScript, Vm, VmLib } from "./BaseScript.s.sol";
 import { DiamondDeployer } from "./libraries/DiamondDeployer.sol";
 import { IDiamond } from "diamond/interfaces/IDiamond.sol";
 import { IDiamondCut } from "diamond/interfaces/IDiamondCut.sol";
@@ -13,6 +13,8 @@ import { PlayersFacet } from "src/game/facets/PlayersFacet.sol";
 import { IFacet } from "src/interfaces/IFacet.sol";
 
 contract UpgradeScript is BaseScript {
+    using VmLib for Vm;
+
     bytes4[] private add;
     bytes4[] private replace;
     bytes4[] private remove;
@@ -22,11 +24,11 @@ contract UpgradeScript is BaseScript {
         string memory name = vm.envString("DIAMOND_NAME");
         if (bytes(name).length == 0) revert("Diamond name not specified");
 
-        address diamond = _loadDeployment(name);
+        address diamond = vm.loadDeployment(name);
         if (diamond == address(0)) revert("Diamond not deployed");
 
         uint256 index = vm.envOr("FACET_INDEX", type(uint256).max);
-        address[] memory facets = _loadFacets(name);
+        address[] memory facets = vm.loadFacets(name);
         bytes4[] memory oldSelectors = IFacet(facets[index]).selectors();
 
         address facet;
@@ -66,7 +68,7 @@ contract UpgradeScript is BaseScript {
         }
         IDiamondCut(diamond).diamondCut(cuts, address(0), "");
         facets[index] = facet;
-        _saveFacets(name, facets);
+        vm.saveFacets(name, facets);
     }
 
     function _contains(bytes4[] memory selectors, bytes4 target) private pure returns (bool) {

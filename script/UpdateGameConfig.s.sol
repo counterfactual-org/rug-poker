@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import { BaseScript } from "./BaseScript.s.sol";
+import { BaseScript, Vm, VmLib } from "./BaseScript.s.sol";
 
 struct GameConfig {
     uint8 maxJokers;
@@ -26,8 +26,10 @@ interface IGameConfigsFacet_ {
 }
 
 contract UpdateGameConfigScript is BaseScript {
+    using VmLib for Vm;
+
     function _run(uint256, address) internal override {
-        address game = _loadDeployment("Game");
+        address game = vm.loadDeployment("Game");
 
         IGameConfigsFacet_(game).updateConfig(
             GameConfig({

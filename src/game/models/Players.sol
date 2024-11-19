@@ -22,18 +22,15 @@ library Players {
     event DecrementCards(address indexed account);
     event IncrementPoints(address indexed account, uint256 points);
     event DecrementPoints(address indexed account, uint256 points);
-    event IncrementShares(address indexed account, uint256 shares);
-    event DecrementShares(address indexed account, uint256 shares);
+    event IncrementShares(address indexed account, uint256 shares, uint256 rewardDebt);
+    event DecrementShares(address indexed account, uint256 shares, uint256 rewardDebt);
     event UpdateUsername(address indexed account, bytes32 indexed username);
     event UpdateAvatar(address indexed account, uint256 tokenId);
     event AddIncomingAttack(address indexed account, uint256 attackId);
     event RemoveIncomingAttack(address indexed account, uint256 attackId);
     event AddOutgoingAttack(address indexed account, uint256 attackId);
     event RemoveOutgoingAttack(address indexed account, uint256 attackId);
-    event DebugCheckpointPlayer(
-        address indexed account, uint256 shares, uint256 accRewardPerShare, uint256 rewardDebt, uint256 accReward
-    );
-    event CheckpointPlayer(address indexed account);
+    event CheckpointPlayer(address indexed account, uint256 shares, uint256 accReward);
 
     error NotPlayer();
     error PlayerInitialized();
@@ -218,19 +215,25 @@ library Players {
     }
 
     function incrementShares(Player storage self, uint256 shares) internal {
-        GameStorage storage s = gameStorage();
+        _checkpoint(self);
 
+        GameStorage storage s = gameStorage();
         address account = self.account;
+
         uint256 sharesSum = s.sharesSum + shares;
         uint256 _shares = s.shares[account] + shares;
         s.sharesSum = sharesSum;
         s.shares[account] = _shares;
-        s.rewardDebt[account] = _shares * s.accRewardPerShare / 1e12;
 
-        emit IncrementShares(account, shares);
+        uint256 rewardDebt = _shares * s.accRewardPerShare / 1e12;
+        s.rewardDebt[account] = rewardDebt;
+
+        emit IncrementShares(account, shares, rewardDebt);
     }
 
     function decrementShares(Player storage self, uint256 shares) internal {
+        _checkpoint(self);
+
         GameStorage storage s = gameStorage();
         address account = self.account;
         if (shares > s.shares[account]) revert InsufficientShares();
@@ -239,9 +242,11 @@ library Players {
         uint256 _shares = s.shares[account] - shares;
         s.sharesSum = sharesSum;
         s.shares[account] = _shares;
-        s.rewardDebt[account] = _shares * s.accRewardPerShare / 1e12;
 
-        emit DecrementShares(account, shares);
+        uint256 rewardDebt = _shares * s.accRewardPerShare / 1e12;
+        s.rewardDebt[account] = rewardDebt;
+
+        emit DecrementShares(account, shares, rewardDebt);
     }
 
     function gainXP(Player storage self, uint32 delta) internal {
@@ -272,17 +277,27 @@ library Players {
     }
 
     function checkpoint(Player storage self) internal {
+        _checkpoint(self);
+
+        GameStorage storage s = gameStorage();
+
+        address account = self.account;
+        s.rewardDebt[account] = s.shares[account] * s.accRewardPerShare / 1e12;
+    }
+
+    function _checkpoint(Player storage self) private {
         Rewards.checkpoint();
 
         GameStorage storage s = gameStorage();
 
         address account = self.account;
         uint256 shares = s.shares[account];
+        uint256 accReward = s.accReward[account];
         if (shares > 0) {
-            s.accReward[account] += shares * s.accRewardPerShare / 1e12 - s.rewardDebt[account];
+            accReward += shares * s.accRewardPerShare / 1e12 - s.rewardDebt[account];
+            s.accReward[account] = accReward;
         }
 
-        emit DebugCheckpointPlayer(account, shares, s.accRewardPerShare, s.rewardDebt[account], s.accReward[account]);
-        emit CheckpointPlayer(account);
+        emit CheckpointPlayer(account, shares, accReward);
     }
 }

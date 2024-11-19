@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import { BaseScript, console } from "./BaseScript.s.sol";
+import { BaseScript, Vm, VmLib, console } from "./BaseScript.s.sol";
 import { Base64 } from "src/libraries/Base64.sol";
 
 interface ISvgRenderer_ {
@@ -11,6 +11,8 @@ interface ISvgRenderer_ {
 }
 
 contract UpdateImagesScript is BaseScript {
+    using VmLib for Vm;
+
     mapping(uint8 => string) private suitChars;
     mapping(uint8 => string) private suitCharsJoker;
     mapping(uint8 => string) private rankChars;
@@ -42,7 +44,7 @@ contract UpdateImagesScript is BaseScript {
     }
 
     function _run(uint256, address) internal override {
-        address renderer = _loadDeployment("SvgRendererV1");
+        address renderer = vm.loadDeployment("SvgRendererV1");
 
         for (uint8 suit; suit < 4; ++suit) {
             for (uint8 rank; rank < 14; ++rank) {

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import { BaseScript, console } from "./BaseScript.s.sol";
+import { BaseScript, Vm, VmLib, console } from "./BaseScript.s.sol";
 import { LibString } from "solmate/utils/LibString.sol";
 import { IGame } from "src/interfaces/IGame.sol";
 import { INFTMinter } from "src/interfaces/INFTMinter.sol";
@@ -9,6 +9,7 @@ import { ISvgRenderer } from "src/interfaces/ISvgRenderer.sol";
 import { ITokenURIRenderer } from "src/interfaces/ITokenURIRenderer.sol";
 
 contract SaveTokenURIsScript is BaseScript {
+    using VmLib for Vm;
     using LibString for uint256;
 
     mapping(uint8 suit => mapping(uint8 rank => bool)) private _rendered;
@@ -43,10 +44,10 @@ contract SaveTokenURIsScript is BaseScript {
     }
 
     function _run(uint256, address) internal override {
-        address minter = _loadDeployment("NFTMinter");
-        address game = _loadDeployment("Game");
-        address svgRenderer = _loadDeployment("SvgRendererV1");
-        address tokenURIRenderer = _loadDeployment("TokenURIRendererV1");
+        address minter = vm.loadDeployment("NFTMinter");
+        address game = vm.loadDeployment("Game");
+        address svgRenderer = vm.loadDeployment("SvgRendererV1");
+        address tokenURIRenderer = vm.loadDeployment("TokenURIRendererV1");
 
         for (uint256 i; i < 100; ++i) {
             INFTMinter(minter).mint{ value: 0.07e18 }(10);

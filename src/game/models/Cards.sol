@@ -303,7 +303,6 @@ library Cards {
         if (added(self)) revert CardAdded(tokenId);
 
         Player storage player = Players.getOrRevert(owner);
-        player.checkpoint();
         player.increaseBogoIfHasNotPlayed();
 
         self.owner = owner;
@@ -348,8 +347,6 @@ library Cards {
         if (player.avatarTokenId == tokenId) {
             player.removeAvatar();
         }
-
-        player.checkpoint();
 
         self.owner = address(0);
 
@@ -429,7 +426,6 @@ library Cards {
 
         if (powerUp > 0) {
             Player storage player = Players.get(self.owner);
-            player.checkpoint();
             player.incrementShares(powerUp);
         }
     }

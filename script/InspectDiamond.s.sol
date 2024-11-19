@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import { BaseScript, console } from "./BaseScript.s.sol";
+import { BaseScript, Vm, VmLib, console } from "./BaseScript.s.sol";
 
 interface IDiamondLoupeFacet_ {
     struct Facet {
@@ -13,11 +13,13 @@ interface IDiamondLoupeFacet_ {
 }
 
 contract InspectDiamondScript is BaseScript {
+    using VmLib for Vm;
+
     function _run(uint256, address) internal override {
         string memory name = vm.envString("DIAMOND_NAME");
         if (bytes(name).length == 0) revert("Diamond name not specified");
 
-        address diamond = _loadDeployment(name);
+        address diamond = vm.loadDeployment(name);
         if (diamond == address(0)) revert("Diamond not deployed");
 
         IDiamondLoupeFacet_.Facet[] memory facets = IDiamondLoupeFacet_(diamond).facets();

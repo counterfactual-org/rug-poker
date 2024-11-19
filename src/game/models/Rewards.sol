@@ -6,7 +6,6 @@ import { GameConfigs } from "./GameConfigs.sol";
 import { TransferLib } from "src/libraries/TransferLib.sol";
 
 library Rewards {
-    event DebugMoveAccReward(address indexed from, address indexed to, uint256 reward, uint256 amount);
     event MoveAccReward(address indexed from, address indexed to, uint8 percentage, uint256 amount);
     event ClaimReward(address indexed account, uint256 amount);
     event Checkpoint(uint256 accRewardPerShare, uint256 reserve);
@@ -41,7 +40,6 @@ library Rewards {
         s.accReward[from] = reward - amount;
         s.accReward[to] += amount;
 
-        emit DebugMoveAccReward(from, to, reward, amount);
         emit MoveAccReward(from, to, percentage, amount);
     }
 
