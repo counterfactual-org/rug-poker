@@ -285,8 +285,13 @@ library Attacks {
         uint256[] memory winnerTokenIds,
         uint256[] memory loserTokenIds
     ) private {
+        GameConfig memory c = GameConfigs.latest();
         uint32 xpWinner = MAX_RANK - uint32(rankWinner);
         uint32 xpLoser = (MAX_RANK - uint32(rankLoser)) / 4;
+        if (block.timestamp < c.doubleXPUntil) {
+            xpWinner *= 2;
+            xpLoser *= 2;
+        }
         Players.get(winner).gainXP(xpWinner);
         Players.get(loser).gainXP(xpLoser);
         Cards.gainXPBatch(winnerTokenIds, xpWinner);

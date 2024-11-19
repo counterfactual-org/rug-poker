@@ -19,6 +19,7 @@ struct GameConfig {
     uint32 minDuration;
     uint32 attackPeriod;
     uint32 defensePeriod;
+    uint32 doubleXPUntil;
 }
 
 interface IGameConfigsFacet_ {
@@ -47,7 +48,8 @@ contract UpdateGameConfigScript is BaseScript {
                 maxCardLevel: 10,
                 bogoPercentage: 30,
                 attackPeriod: 1 hours,
-                defensePeriod: 24 hours
+                defensePeriod: 24 hours,
+                doubleXPUntil: 1_732_233_600
             })
         );
     }

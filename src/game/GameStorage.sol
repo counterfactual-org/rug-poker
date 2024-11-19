@@ -60,6 +60,7 @@ struct GameConfig {
     uint32 minDuration;
     uint32 attackPeriod;
     uint32 defensePeriod;
+    uint32 doubleXPUntil;
 }
 
 struct ItemEntry {

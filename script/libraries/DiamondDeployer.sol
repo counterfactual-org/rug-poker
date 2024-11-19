@@ -77,7 +77,8 @@ library DiamondDeployer {
             maxCardLevel: 10,
             bogoPercentage: 30,
             attackPeriod: 1 hours,
-            defensePeriod: 24 hours
+            defensePeriod: 24 hours,
+            doubleXPUntil: 0
         });
     }
 
