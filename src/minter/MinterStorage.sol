@@ -15,6 +15,9 @@ struct MinterStorage {
     address[] entrants;
     uint256 entrantsOffset;
     uint256 batchId;
+    // referral codes
+    mapping(address account => string) referralCodes;
+    mapping(string code => ReferralCodeInfo) referralCodeInfo;
 }
 
 struct MinterConfig {
@@ -22,4 +25,10 @@ struct MinterConfig {
     uint256 initialDiscountUntil;
     uint8[2] shares;
     uint8[] winnerRatios;
+}
+
+struct ReferralCodeInfo {
+    address owner;
+    uint256 used;
+    uint256 freeCardsMinted;
 }
